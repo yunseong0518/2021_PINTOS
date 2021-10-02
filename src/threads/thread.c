@@ -75,7 +75,7 @@ static tid_t allocate_tid (void);
 
 /* our implement */
 
-static bool thread_compare_tick (const struct list_elem *a,
+bool thread_compare_tick (const struct list_elem *a,
                           const struct list_elem *b,
                           void *aux UNUSED) 
 {
@@ -86,25 +86,37 @@ static bool thread_compare_tick (const struct list_elem *a,
 void
 thread_set_sleep (int64_t tick)
 {
+  enum intr_level old_level;
+  old_level = intr_disable();
+
+  ASSERT(thread_current() != idle_thread);
+
   struct thread * cur = thread_current();
-  list_insert_ordered(&sleep_list, &cur->sleepelem, thread_compare_tick, NULL);
   cur->is_sleep = true;
   cur->wake_tick = tick;
+  list_insert_ordered(&sleep_list, &cur->sleepelem, thread_compare_tick, NULL);
+  
+  thread_block();
+
+  intr_set_level(old_level);
 }
 
 bool
 thread_check_wake (int64_t tick)
 {
-  struct list_elem *e = list_front(&sleep_list);
-  struct thread * t = list_entry(e,struct thread, sleepelem);
-  ASSERT(t->wake_tick > tick);
-  if(t->wake_tick == tick){
-    thread_unblock( t );
-    list_remove( e );
-    return true;
+  if(list_empty(&sleep_list)) return false;
+  else {
+    struct list_elem *e = list_begin(&sleep_list);
+    struct thread * t = list_entry(e,struct thread, sleepelem);
+    ASSERT(t->wake_tick >= tick);
+    if(t->wake_tick == tick){
+      list_remove( &t->sleepelem );
+      thread_unblock( t );
+      return true;
+    }
+    else
+      return false;
   }
-  else
-    return false;
 }
 
 /* Initializes the threading system by transforming the code

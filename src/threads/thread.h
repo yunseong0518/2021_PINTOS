@@ -144,7 +144,9 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 /* functions for sleep */
+bool thread_compare_tick(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void thread_set_sleep(int64_t);
+bool thread_check_wake(int64_t);
 
 
 #endif /* threads/thread.h */
