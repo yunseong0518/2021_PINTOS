@@ -75,7 +75,7 @@ static tid_t allocate_tid (void);
 
 /* our implement */
 
-static bool compare_tick (const struct list_elem *a,
+static bool thread_compare_tick (const struct list_elem *a,
                           const struct list_elem *b,
                           void *aux UNUSED) 
 {
@@ -87,11 +87,9 @@ void
 thread_set_sleep (int64_t tick)
 {
   struct *thread cur = thread_current();
-  list_insert_ordered(&sleep_list, &cur->sleepelem, , );
+  list_insert_ordered(&sleep_list, &cur->sleepelem, thread_compare_tick, NULL);
   cur->is_sleep = true;
   cur->wake_tick = tick;
-
-
 }
 
 /* Initializes the threading system by transforming the code
