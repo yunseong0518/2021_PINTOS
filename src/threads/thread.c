@@ -73,6 +73,27 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+/* our implement */
+
+static bool compare_tick (const struct list_elem *a,
+                          const struct list_elem *b,
+                          void *aux UNUSED) 
+{
+  return list_entry(a, struct thread, sleepelem)->wake_tick < list_entry(b, struct thread, sleepelem)->wake_tick;
+} 
+
+/* function for sleep */
+void
+thread_set_sleep (int64_t tick)
+{
+  struct *thread cur = thread_current();
+  list_insert_ordered(&sleep_list, &cur->sleepelem, , );
+  cur->is_sleep = true;
+  cur->wake_tick = tick;
+
+
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
