@@ -86,7 +86,7 @@ static bool thread_compare_tick (const struct list_elem *a,
 void
 thread_set_sleep (int64_t tick)
 {
-  struct *thread cur = thread_current();
+  struct thread * cur = thread_current();
   list_insert_ordered(&sleep_list, &cur->sleepelem, thread_compare_tick, NULL);
   cur->is_sleep = true;
   cur->wake_tick = tick;
@@ -95,8 +95,8 @@ thread_set_sleep (int64_t tick)
 bool
 thread_check_wake (int64_t tick)
 {
-  list_elem *e = list_front(sleep_list);
-  struct *thread t = list_entry(e,struct thread, sleepelem);
+  struct list_elem *e = list_front(&sleep_list);
+  struct thread * t = list_entry(e,struct thread, sleepelem);
   ASSERT(t->wake_tick > tick);
   if(t->wake_tick == tick){
     thread_unblock( t );
