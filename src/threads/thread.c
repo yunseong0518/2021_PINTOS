@@ -92,6 +92,21 @@ thread_set_sleep (int64_t tick)
   cur->wake_tick = tick;
 }
 
+bool
+thread_check_wake (int64_t tick)
+{
+  list_elem *e = list_front(sleep_list);
+  struct *thread t = list_entry(e,struct thread, sleepelem);
+  ASSERT(t->wake_tick > tick);
+  if(t->wake_tick == tick){
+    thread_unblock( t );
+    list_remove( e );
+    return true;
+  }
+  else
+    return false;
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
