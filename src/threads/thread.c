@@ -28,6 +28,8 @@ static struct list ready_list;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 
+static struct list sleep_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -71,6 +73,52 @@ static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
 
+/* our implement */
+
+bool thread_compare_tick (const struct list_elem *a,
+                          const struct list_elem *b,
+                          void *aux UNUSED) 
+{
+  return list_entry(a, struct thread, sleepelem)->wake_tick < list_entry(b, struct thread, sleepelem)->wake_tick;
+} 
+
+/* function for sleep */
+void
+thread_set_sleep (int64_t tick)
+{
+  enum intr_level old_level;
+  old_level = intr_disable();
+
+  ASSERT(thread_current() != idle_thread);
+
+  struct thread * cur = thread_current();
+  cur->is_sleep = true;
+  cur->wake_tick = tick;
+  list_insert_ordered(&sleep_list, &cur->sleepelem, thread_compare_tick, NULL);
+  
+  thread_block();
+
+  intr_set_level(old_level);
+}
+
+bool
+thread_check_wake (int64_t tick)
+{
+  if(list_empty(&sleep_list)) return false;
+  else {
+    struct list_elem *e = list_begin(&sleep_list);
+    struct thread * t = list_entry(e,struct thread, sleepelem);
+    ASSERT(t->wake_tick >= tick);
+    if(t->wake_tick == tick){
+      list_remove( &t->sleepelem );
+      thread_unblock( t );
+      return true;
+    }
+    else
+      return false;
+  }
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -92,6 +140,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+  list_init (&sleep_list);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
