@@ -153,5 +153,9 @@ bool thread_compare_tick(const struct list_elem *a, const struct list_elem *b, v
 void thread_set_sleep(int64_t);
 bool thread_check_wake(int64_t);
 
+/* functions for priority scheduing */
+bool thread_compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
+
 
 #endif /* threads/thread.h */
