@@ -80,7 +80,14 @@ bool thread_compare_tick (const struct list_elem *a,
                           void *aux UNUSED) 
 {
   return list_entry(a, struct thread, sleepelem)->wake_tick < list_entry(b, struct thread, sleepelem)->wake_tick;
-} 
+}
+
+bool thread_compare_priority (const struct list_elem *a,
+                              const struct list_elem *b,
+                              void *aux UNUSED) 
+{
+  return list_entry(a, struct thread, elem)->priority_max < list_entry(b, struct thread, elem)->priority_max;
+}
 
 /* function for sleep */
 void
@@ -286,7 +293,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, thread_compare_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -357,7 +364,7 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, thread_compare_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
