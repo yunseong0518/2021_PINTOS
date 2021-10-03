@@ -99,7 +99,6 @@ struct thread
     int priority_max;
     struct list donator_list;
     struct list location;
-    struct list_elem donateelem;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */

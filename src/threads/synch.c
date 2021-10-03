@@ -196,6 +196,7 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   if (lock->holder != NULL) {
+
     list_push_back (&lock->holder->donator_list, &lock->elem);
     lock->holder->priority_max = thread_current ()->priority_max;
     list_push_back (&thread_current ()->location, &lock->elem);
@@ -292,7 +293,6 @@ void
 cond_init (struct condition *cond)
 {
   ASSERT (cond != NULL);
-
   list_init (&cond->waiters);
 }
 
@@ -320,7 +320,6 @@ void
 cond_wait (struct condition *cond, struct lock *lock) 
 {
   struct semaphore_elem waiter;
-
   ASSERT (cond != NULL);
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
