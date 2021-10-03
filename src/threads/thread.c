@@ -86,7 +86,7 @@ bool thread_compare_priority (const struct list_elem *a,
                               const struct list_elem *b,
                               void *aux UNUSED) 
 {
-  return list_entry(a, struct thread, elem)->priority_max < list_entry(b, struct thread, elem)->priority_max;
+  return list_entry(a, struct thread, elem)->priority_max > list_entry(b, struct thread, elem)->priority_max;
 }
 
 /* function for sleep */
@@ -295,7 +295,6 @@ thread_unblock (struct thread *t)
   ASSERT (t->status == THREAD_BLOCKED);
   list_insert_ordered (&ready_list, &t->elem, thread_compare_priority, NULL);
   t->status = THREAD_READY;
-  schedule();
   intr_set_level (old_level);
 }
 
@@ -399,7 +398,7 @@ thread_set_priority (int new_priority)
 int
 thread_get_priority (void) 
 {
-  return thread_current ()->priority;
+  return thread_current ()->priority_max;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -521,6 +520,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->priority_max = priority;
   t->magic = THREAD_MAGIC;
+
+  list_init(&t->donator_list);
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
