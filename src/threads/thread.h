@@ -95,6 +95,11 @@ struct thread
     bool is_sleep;
     int64_t wake_tick;
 
+    /* variables for priority scheduling */
+    int priority_max;
+    struct list donator_list;
+    struct list location;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
