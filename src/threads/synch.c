@@ -195,11 +195,23 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  list_push_back (&thread_current ()->location, &lock->elem);
+  if (lock->holder == NULL)
+  else {
+    list_push_back (&lock->holder->donator_list, &lock->elem);
+    lock->holder->priority_max = thread_current ()->priority_max;
+    list_push_back (&thread_current ()->location, &lock->elem);
+    struct lock *temp;
+    temp = lock;
+    while (temp->holder->status == THREAD_BLOCKED) {
+      struct lock *next_lock = list_entry(list_front(&temp->holder->location), struct lock, elem);
+      list_push_back(&next_lock->holder->donator_list, &next_lock->elem);
+      next_lock->holder->priority_max = temp->holder->priority_max;]
+      list_sort(&list_entry(list_front(next_lock->holder->location), struct lock, elem)->semaphore->waiters, thread_compare_priority, NULL);
+      list_push_back (temp->holder->location, &next_lock->elem);
+      temp = next_lock;
+    }
+  }
   sema_down (&lock->semaphore);
-  ASSERT (list_front (&thread_current ()->location) == &lock->elem)
-  list_pop_front (&thread_current ()->location);
   lock->holder = thread_current ();
 }
 
