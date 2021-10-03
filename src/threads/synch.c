@@ -246,10 +246,12 @@ lock_release (struct lock *lock)
   ASSERT (lock_held_by_current_thread (lock));
 
   struct list_elem *e;
-  for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
-    if (&lock->elem == e) {
-      list_remove(e);
-      break;
+  if (!list_empty(&thread_current()->donator_list)){
+    for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
+      if (&lock->elem == e) {
+        list_remove(e);
+        break;
+      }
     }
   }
   thread_current()->priority_max = thread_current()->priority;
