@@ -202,6 +202,7 @@ lock_acquire (struct lock *lock)
     struct lock *temp;
     temp = lock;
     while (temp->holder->status == THREAD_BLOCKED) {
+      ASSERT(!list_empty(&temp->holder->location));
       struct lock *next_lock = list_entry(list_front(&temp->holder->location), struct lock, elem_location);
       list_push_back(&next_lock->holder->donator_list, &next_lock->elem_donator);
       next_lock->holder->priority_max = temp->holder->priority_max;
@@ -260,12 +261,13 @@ lock_release (struct lock *lock)
   
   if (!list_empty(&thread_current()->donator_list)) {
     for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
-      if (list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max > thread_current()->priority_max) {
-        thread_current()->priority_max = list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max;
+      if (!list_empty(&list_entry(e, struct lock, elem_donator)->semaphore.waiters)) {
+        if (list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max > thread_current()->priority_max) {
+          thread_current()->priority_max = list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max;
+        }
       }
     }
   }
-  thread_yield();
   lock->holder = NULL;
   sema_up (&lock->semaphore);
 }
