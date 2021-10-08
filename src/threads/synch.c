@@ -195,24 +195,24 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
+
   if (lock->holder != NULL) {
     list_push_back (&lock->holder->donator_list, &lock->elem_donator);
     lock->holder->priority_max = thread_current ()->priority_max;
-    list_push_back (&thread_current ()->location, &lock->elem_location);
+    thread_current ()->location = lock;
     struct lock *temp;
     temp = lock;
-    while (temp->holder->status == THREAD_BLOCKED) {
-      ASSERT(!list_empty(&temp->holder->location));
-      struct lock *next_lock = list_entry(list_front(&temp->holder->location), struct lock, elem_location);
+    while (temp->holder->location != NULL) {
+      struct lock *next_lock = temp->holder->location;
       list_push_back(&next_lock->holder->donator_list, &next_lock->elem_donator);
       next_lock->holder->priority_max = temp->holder->priority_max;
-      list_sort(&list_entry(list_front(&next_lock->holder->location), struct lock, elem_location)->semaphore.waiters, thread_compare_priority, NULL);
-      list_push_back (&temp->holder->location, &next_lock->elem_location);
+      list_sort(&next_lock->holder->location->semaphore.waiters, thread_compare_priority, NULL);
+      temp->holder->location = next_lock;
       temp = next_lock;
     }
   }
-
   sema_down (&lock->semaphore);
+  thread_current()->location = NULL;
   lock->holder = thread_current ();
 }
 
@@ -270,6 +270,7 @@ lock_release (struct lock *lock)
   }
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false

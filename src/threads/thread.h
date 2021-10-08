@@ -98,7 +98,7 @@ struct thread
     /* variables for priority scheduling */
     int priority_max;
     struct list donator_list;
-    struct list location;
+    struct lock* location;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
