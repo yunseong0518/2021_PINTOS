@@ -216,7 +216,8 @@ lock_acquire (struct lock *lock)
       if (exist == false)
         list_push_back(&next_lock->holder->donator_list, &next_lock->elem_donator);
       next_lock->holder->priority_max = temp->holder->priority_max;
-      list_sort(&next_lock->holder->location->semaphore.waiters, thread_compare_priority, NULL);
+      if (next_lock->holder->location != NULL)
+        list_sort(&next_lock->holder->location->semaphore.waiters, thread_compare_priority, NULL);
       temp->holder->location = next_lock;
       temp = next_lock;
     }
