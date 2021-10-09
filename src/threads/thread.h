@@ -162,6 +162,8 @@ bool thread_compare_priority(const struct list_elem *a, const struct list_elem *
 
 /* functions for priority calculation */
 int mlfqs_get_ready_threads(void);
+int mlfqs_get_recent_cpu(void);
+int mlfqs_get_nice(void);
 void mlfqs_set_load_avg(void);
 void mlfqs_set_recent_cpu(void);
 void mlfqs_set_priority(void);

@@ -148,6 +148,18 @@ mlfqs_get_ready_threads(void)
   return count_ready;
 }
 
+int
+mlfqs_get_recent_cpu(void)
+{
+  return fp_convert_x_int_near(fp_mul_xn(thread_current()->recent_cpu ,100));
+}
+
+int
+mlfqs_get_nice(void)
+{
+  return thread_current()->nice;
+}
+
 void
 mlfqs_set_load_avg(void)
 {
@@ -177,6 +189,8 @@ void mlfqs_set_priority(void)
     t = list_entry(e, struct thread, allelem);
     
     t->priority = fp_convert_x_int_near(fp_add_xn(fp_div_xn(t->recent_cpu, -4), PRI_MAX - 2 * (t->nice)));
+    if (t->priority < PRI_MIN) t->priority = PRI_MIN;
+    else if (t->priority > PRI_MAX) t->priority = PRI_MAX;
     }
 }
 
@@ -308,7 +322,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
   t->nice = thread_current()->nice;
-  t->recent_cpu = 0;
+  t->recent_cpu = thread_current()->recent_cpu;
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -376,7 +390,7 @@ thread_unblock (struct thread *t)
   else
   {
     ASSERT (t->priority >= 0);
-    ASSERT (t->priority <= 63);
+    ASSERT (t->priority <= 63)
     list_push_back(&mlfqs_ready_list[t->priority], &t->elem);
   }
   t->status = THREAD_READY;
@@ -510,7 +524,11 @@ int
 thread_get_priority (void) 
 {
   enum intr_level old_level = intr_disable();
-  int temp = thread_current()->priority_max;
+  int temp;
+  if (!thread_mlfqs)
+    temp = thread_current()->priority_max;
+  else
+    temp = thread_current()->priority;
   intr_set_level(old_level);
   return temp;
 }
