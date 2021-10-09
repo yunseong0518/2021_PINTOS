@@ -173,10 +173,10 @@ void mlfqs_set_priority(void)
 {
   struct list_elem *e;
   for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
-    struct thread *t = list_entry(e, struct thread, allelem);
+    struct thread *t; 
+    t = list_entry(e, struct thread, allelem);
     
-    t->priority = fp_convert_x_int_near(fp_sub_xn(fp_sub_xy(fp_convert_nfp(PRI_MAX), fp_div_xn(t->recent_cpu, 4)), t->nice * 2));
-
+    t->priority = fp_convert_x_int_near(fp_add_xy(fp_div_xn(t->recent_cpu, -4), PRI_MAX - 2 * (t->nice)));
     }
 }
 
@@ -184,7 +184,7 @@ void
 mlfqs_increase_recent_cpu(void)
 {
   if(thread_current() != idle_thread){
-    thread_current()->recent_cpu++;
+    thread_current()->recent_cpu = fp_add_xn(thread_current()->recent_cpu, 1);
   }
 }
 
@@ -249,7 +249,6 @@ void
 thread_tick (void) 
 {
   struct thread *t = thread_current ();
-
   /* Update statistics. */
   if (t == idle_thread)
     idle_ticks++;
@@ -521,7 +520,10 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  return fp_convert_x_int_near(fp_mul_xn(load_avg, 100));
+  enum intr_level old_level = intr_disable();
+  int value = fp_convert_x_int_near(fp_mul_xn(load_avg, 100));
+  intr_set_level(old_level);
+  return value;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
