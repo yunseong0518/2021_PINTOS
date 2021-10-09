@@ -95,6 +95,11 @@ struct thread
     bool is_sleep;
     int64_t wake_tick;
 
+    /* variables for priority scheduling */
+    int priority_max;
+    struct list donator_list;
+    struct lock* location;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -147,6 +152,10 @@ int thread_get_load_avg (void);
 bool thread_compare_tick(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 void thread_set_sleep(int64_t);
 bool thread_check_wake(int64_t);
+
+/* functions for priority scheduing */
+bool thread_compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
+
 
 
 #endif /* threads/thread.h */
