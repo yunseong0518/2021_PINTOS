@@ -64,6 +64,8 @@ static unsigned thread_ticks;   /* # of timer ticks since last yield. */
    Controlled by kernel command-line option "-o mlfqs". */
 bool thread_mlfqs;
 
+int load_avg;
+
 static void kernel_thread (thread_func *, void *aux);
 
 static void idle (void *aux UNUSED);
@@ -129,6 +131,51 @@ thread_check_wake (int64_t tick)
   }
 }
 
+int
+mlfqs_get_ready_threads(void)
+{
+  int count_ready = 0;
+  struct list_elem *e;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+    struct thread *t = list_entry (e, struct thread, allelem);
+    if (t->status == THREAD_RUNNING || t->status == THREAD_READY) {
+      if (t != idle_thread) {
+        count_ready++;
+      }
+    }
+  }
+  return count_ready;
+}
+
+void
+mlfqs_set_load_avg(void)
+{
+  load_avg = (59 * load_avg + mlfqs_get_ready_threads()) / 60;
+}
+
+void
+mlfqs_set_recent_cpu(void)
+{
+  struct list_elem *e;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+    struct thread *t = list_entry(e, struct thread, allelem);
+    
+    // floating pointer issue
+    t->recent_cpu = (2 * load_avg / (2 * load_avg + 1)) * t->recent_cpu + t->nice;
+  }
+}
+
+void mlfqs_set_priority(void)
+{
+  struct list_elem *e;
+  for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
+    struct thread *t = list_entry(e, struct thread, allelem);
+    
+    t->priority = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2); 
+
+    }
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -155,6 +202,8 @@ thread_init (void)
   for (i = 0; i < 64; i++) {
     list_init (&mlfqs_ready_list[i]);
   }
+
+  load_avg = 0;
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -430,33 +479,30 @@ thread_get_priority (void)
 
 /* Sets the current thread's nice value to NICE. */
 void
-thread_set_nice (int nice UNUSED) 
+thread_set_nice (int nice) 
 {
-  /* Not yet implemented. */
+  thread_current()->nice = nice;
 }
 
 /* Returns the current thread's nice value. */
 int
 thread_get_nice (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->nice;
 }
 
 /* Returns 100 times the system load average. */
 int
 thread_get_load_avg (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return load_avg * 100;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  /* Not yet implemented. */
-  return 0;
+  return thread_current()->recent_cpu * 100;
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
