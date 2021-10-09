@@ -24,6 +24,9 @@
    that are ready to run but not actually running. */
 static struct list ready_list;
 
+/* ready list for mlfqs */
+static struct list mlfqs_ready_list[64];
+
 /* List of all processes.  Processes are added to this list
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
@@ -148,6 +151,10 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
   list_init (&sleep_list);
+  int i;
+  for (i = 0; i < 64; i++) {
+    list_init (&mlfqs_ready_list[i]);
+  }
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
