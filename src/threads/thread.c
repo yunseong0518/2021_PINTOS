@@ -91,7 +91,8 @@ bool thread_compare_priority (const struct list_elem *a,
                               const struct list_elem *b,
                               void *aux UNUSED) 
 {
-  return list_entry(a, struct thread, elem)->priority_max > list_entry(b, struct thread, elem)->priority_max;
+  if(thread_mlfqs) return list_entry(a, struct thread, elem)->priority > list_entry(b, struct thread, elem)->priority;
+  else return list_entry(a, struct thread, elem)->priority_max > list_entry(b, struct thread, elem)->priority_max;
 }
 
 /* function for sleep */
@@ -362,7 +363,10 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_insert_ordered (&ready_list, &t->elem, thread_compare_priority, NULL);
+  if(!thread_mlfqs)
+    list_insert_ordered (&ready_list, &t->elem, thread_compare_priority, NULL);
+  else
+    list_push_back(&mlfqs_ready_list[t->priority], &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -433,7 +437,10 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) {
-    list_insert_ordered (&ready_list, &cur->elem, thread_compare_priority, NULL);
+    if(!thread_mlfqs)
+      list_insert_ordered (&ready_list, &cur->elem, thread_compare_priority, NULL);
+    else
+      list_push_back(&mlfqs_ready_list[cur->priority], &cur->elem);
   }
   cur->status = THREAD_READY;
   schedule ();
@@ -636,10 +643,20 @@ alloc_frame (struct thread *t, size_t size)
 static struct thread *
 next_thread_to_run (void) 
 {
-  if (list_empty (&ready_list))
+  if(!thread_mlfqs){
+    if (list_empty (&ready_list))
+      return idle_thread;
+    else
+      return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
+  else{
+    int i;
+    for(i = PRI_MAX; i >= PRI_MIN; i--){
+      if(!list_empty(&mlfqs_ready_list[i]))
+        return list_entry (list_pop_front (&mlfqs_ready_list[i]), struct thread, elem);
+    }
     return idle_thread;
-  else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+  }
 }
 
 /* Completes a thread switch by activating the new thread's page

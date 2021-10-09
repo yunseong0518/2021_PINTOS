@@ -198,31 +198,32 @@ lock_acquire (struct lock *lock)
   ASSERT (lock != NULL);
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
-
-  if (lock->holder != NULL) {
-    struct list_elem *e;
-    bool exist = false;
-    for (e = list_begin(&lock->holder->donator_list); e != list_end(&lock->holder->donator_list); e = list_next(e)) {
-      if (e == &lock->elem_donator) exist = true;
-    }
-    if (exist == false) list_push_back (&lock->holder->donator_list, &lock->elem_donator);
-    lock->holder->priority_max = thread_current ()->priority_max;
-    thread_current ()->location = lock;
-    struct lock *temp;
-    temp = lock;
-    while (temp->holder->location != NULL) {
-      struct lock *next_lock = temp->holder->location;
+  if(!thread_mlfqs){
+    if (lock->holder != NULL) {
+      struct list_elem *e;
       bool exist = false;
-      for (e = list_begin(&next_lock->holder->donator_list); e != list_end(&next_lock->holder->donator_list); e = list_next(e)) {
-        if (e == &next_lock->elem_donator) exist = true;
+      for (e = list_begin(&lock->holder->donator_list); e != list_end(&lock->holder->donator_list); e = list_next(e)) {
+        if (e == &lock->elem_donator) exist = true;
       }
-      if (exist == false)
-        list_push_back(&next_lock->holder->donator_list, &next_lock->elem_donator);
-      next_lock->holder->priority_max = temp->holder->priority_max;
-      if (next_lock->holder->location != NULL)
-        list_sort(&next_lock->holder->location->semaphore.waiters, thread_compare_priority, NULL);
-      temp->holder->location = next_lock;
-      temp = next_lock;
+      if (exist == false) list_push_back (&lock->holder->donator_list, &lock->elem_donator);
+      lock->holder->priority_max = thread_current ()->priority_max;
+      thread_current ()->location = lock;
+      struct lock *temp;
+      temp = lock;
+      while (temp->holder->location != NULL) {
+        struct lock *next_lock = temp->holder->location;
+        bool exist = false;
+        for (e = list_begin(&next_lock->holder->donator_list); e != list_end(&next_lock->holder->donator_list); e = list_next(e)) {
+          if (e == &next_lock->elem_donator) exist = true;
+        }
+        if (exist == false)
+          list_push_back(&next_lock->holder->donator_list, &next_lock->elem_donator);
+        next_lock->holder->priority_max = temp->holder->priority_max;
+        if (next_lock->holder->location != NULL)
+          list_sort(&next_lock->holder->location->semaphore.waiters, thread_compare_priority, NULL);
+        temp->holder->location = next_lock;
+        temp = next_lock;
+      }
     }
   }
   sema_down (&lock->semaphore);
@@ -259,29 +260,30 @@ lock_release (struct lock *lock)
 {
   ASSERT (lock != NULL);
   ASSERT (lock_held_by_current_thread (lock));
-
-  struct list_elem *e;
-  if (!list_empty(&thread_current()->donator_list)){
-    for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
-      if (&lock->elem_donator == e) {
-        list_remove(e);
-        break;
-      }
-    }
-  }
-  thread_current()->priority_max = thread_current()->priority;
-
-  
-  if (!list_empty(&thread_current()->donator_list)) {
-    for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
-      if (!list_empty(&list_entry(e, struct lock, elem_donator)->semaphore.waiters)) {
-        if (list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max > thread_current()->priority_max) {
-          thread_current()->priority_max = list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max;
+  if(!thread_mlfqs) {
+    struct list_elem *e;
+    if (!list_empty(&thread_current()->donator_list)){
+      for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
+        if (&lock->elem_donator == e) {
+          list_remove(e);
+          break;
         }
       }
     }
+    thread_current()->priority_max = thread_current()->priority;
+
+    
+    if (!list_empty(&thread_current()->donator_list)) {
+      for (e = list_begin(&thread_current()->donator_list); e != list_end(&thread_current()->donator_list); e = list_next(e)) {
+        if (!list_empty(&list_entry(e, struct lock, elem_donator)->semaphore.waiters)) {
+          if (list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max > thread_current()->priority_max) {
+            thread_current()->priority_max = list_entry(list_front(&list_entry(e, struct lock, elem_donator)->semaphore.waiters), struct thread, elem)->priority_max;
+          }
+        }
+      }
+    }
+    lock->holder->location = NULL;
   }
-  lock->holder->location = NULL;
   lock->holder = NULL;
   sema_up (&lock->semaphore);
   thread_yield();
