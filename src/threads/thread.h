@@ -165,7 +165,7 @@ int mlfqs_get_ready_threads(void);
 void mlfqs_set_load_avg(void);
 void mlfqs_set_recent_cpu(void);
 void mlfqs_set_priority(void);
-void mlfqs_increase_recent_cpu(void)
+void mlfqs_increase_recent_cpu(void);
 
 
 #endif /* threads/thread.h */
