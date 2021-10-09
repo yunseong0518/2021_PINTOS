@@ -176,6 +176,14 @@ void mlfqs_set_priority(void)
     }
 }
 
+void
+mlfqs_increase_recent_cpu(void)
+{
+  if(thread_current() != idle_thread){
+    thread_current()->recent_cpu++;
+  }
+}
+
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
    general and it is possible in this case only because loader.S
@@ -210,6 +218,8 @@ thread_init (void)
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
+  initial_thread->nice = 0;
+  initial_thread->recent_cpu = 0;
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -596,7 +606,10 @@ init_thread (struct thread *t, const char *name, int priority)
 
   list_init(&t->donator_list);
   t->location = NULL;
-
+  
+  t->nice = thread_current()->nice;;
+  t->recent_cpu = thread_current()->recent_cpu;
+  
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
