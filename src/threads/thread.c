@@ -176,7 +176,7 @@ void mlfqs_set_priority(void)
     struct thread *t; 
     t = list_entry(e, struct thread, allelem);
     
-    t->priority = fp_convert_x_int_near(fp_add_xy(fp_div_xn(t->recent_cpu, -4), PRI_MAX - 2 * (t->nice)));
+    t->priority = fp_convert_x_int_near(fp_add_xn(fp_div_xn(t->recent_cpu, -4), PRI_MAX - 2 * (t->nice)));
     }
 }
 
@@ -308,7 +308,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
   t->nice = thread_current()->nice;
-  t->recent_cpu = thread_current()->recent_cpu;
+  t->recent_cpu = 0;
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -374,7 +374,11 @@ thread_unblock (struct thread *t)
   if(!thread_mlfqs)
     list_insert_ordered (&ready_list, &t->elem, thread_compare_priority, NULL);
   else
+  {
+    ASSERT (t->priority >= 0);
+    ASSERT (t->priority <= 63);
     list_push_back(&mlfqs_ready_list[t->priority], &t->elem);
+  }
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -448,7 +452,15 @@ thread_yield (void)
     if(!thread_mlfqs)
       list_insert_ordered (&ready_list, &cur->elem, thread_compare_priority, NULL);
     else
+    {
+      ASSERT(cur->priority >= -4);
+      ASSERT(cur->priority >= -3);
+      ASSERT(cur->priority >= -2);
+      ASSERT(cur->priority >= -1);
+      ASSERT(cur->priority >= 0);
+      ASSERT(cur->priority <= 63);
       list_push_back(&mlfqs_ready_list[cur->priority], &cur->elem);
+    }
   }
   cur->status = THREAD_READY;
   schedule ();
@@ -476,6 +488,7 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  ASSERT(!thread_mlfqs);
   if (thread_current()->priority < new_priority) {
     thread_current()->priority = new_priority;
     if (thread_current()->priority_max < new_priority) {
