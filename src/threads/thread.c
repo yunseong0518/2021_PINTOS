@@ -11,7 +11,6 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#include "threads/fixed_pointer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -152,7 +151,10 @@ mlfqs_get_ready_threads(void)
 void
 mlfqs_set_load_avg(void)
 {
-  load_avg = (59 * load_avg + mlfqs_get_ready_threads()) / 60;
+  load_avg = fp_add_xy(
+  fp_mul_xy(fp_div_xy(fp_convert_nfp(59), fp_convert_nfp(60)), load_avg),
+  fp_mul_xn(fp_div_xy(fp_convert_nfp(1), fp_convert_nfp(60)), mlfqs_get_ready_threads())
+  );
 }
 
 void
@@ -163,7 +165,7 @@ mlfqs_set_recent_cpu(void)
     struct thread *t = list_entry(e, struct thread, allelem);
     
     // floating pointer issue
-    t->recent_cpu = (2 * load_avg / (2 * load_avg + 1)) * t->recent_cpu + t->nice;
+    t->recent_cpu = fp_add_xn(fp_mul_xy(fp_div_xy(fp_mul_xn(load_avg, 2), fp_add_xn(fp_mul_xn(load_avg, 2), 1)), t->recent_cpu), t->nice);
   }
 }
 
@@ -173,7 +175,7 @@ void mlfqs_set_priority(void)
   for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e)) {
     struct thread *t = list_entry(e, struct thread, allelem);
     
-    t->priority = PRI_MAX - (t->recent_cpu / 4) - (t->nice * 2); 
+    t->priority = fp_convert_x_int_near(fp_sub_xn(fp_sub_xy(fp_convert_nfp(PRI_MAX), fp_div_xn(t->recent_cpu, 4)), t->nice * 2));
 
     }
 }
@@ -213,7 +215,7 @@ thread_init (void)
     list_init (&mlfqs_ready_list[i]);
   }
 
-  load_avg = 0;
+  load_avg = fp_convert_nfp(0);
 
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
@@ -221,7 +223,7 @@ thread_init (void)
   initial_thread->status = THREAD_RUNNING;
   initial_thread->tid = allocate_tid ();
   initial_thread->nice = 0;
-  initial_thread->recent_cpu = 0;
+  initial_thread->recent_cpu = fp_convert_nfp(0);
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
@@ -519,14 +521,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  return load_avg * 100;
+  return fp_convert_x_int_near(fp_mul_xn(load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  return thread_current()->recent_cpu * 100;
+  return fp_convert_x_int_near(fp_mul_xn(thread_current()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -749,3 +751,71 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* functions for fixed pointer */
+int
+fp_convert_nfp(int n) 
+{
+    return n*F;
+}
+
+int
+fp_convert_x_int_zero(int x)
+{
+    return x/F;
+}
+
+int
+fp_convert_x_int_near(int x)
+{
+    if (x >= 0) return (x + F / 2) / F;
+    else return (x - F / 2) / F;
+}
+
+int
+fp_add_xy(int x, int y)
+{
+    return x + y;
+}
+
+int
+fp_sub_xy(int x, int y)
+{
+    return x - y;
+}
+
+int
+fp_add_xn(int x, int n)
+{
+    return x + n*F;
+}
+
+int
+fp_sub_xn(int x, int n)
+{
+    return x - n*F;
+}
+
+int
+fp_mul_xy(int x, int y)
+{
+    return ((int64_t)x)*y/F;
+}
+
+int
+fp_mul_xn(int x, int n)
+{
+    return x*n;
+}
+
+int
+fp_div_xy(int x, int y)
+{
+    return ((int64_t)x*F)/y;
+}
+
+int
+fp_div_xn(int x, int n)
+{
+    return x/n;
+}
