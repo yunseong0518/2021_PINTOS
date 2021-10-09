@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/fixed_pointer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif
@@ -305,6 +306,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  t->nice = thread_current()->nice;
+  t->recent_cpu = thread_current()->recent_cpu;
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -323,9 +326,13 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
-  if (!list_empty(&ready_list) && thread_current()->priority_max < list_entry(list_front(&ready_list), struct thread, elem)->priority_max) {
-    thread_yield();
+  if (!thread_mlfqs) {
+    if (!list_empty(&ready_list) && thread_current()->priority_max < list_entry(list_front(&ready_list), struct thread, elem)->priority_max) {
+      thread_yield();
+    }
   }
+  else 
+    thread_yield();
 
   return tid;
 }
@@ -613,9 +620,6 @@ init_thread (struct thread *t, const char *name, int priority)
 
   list_init(&t->donator_list);
   t->location = NULL;
-  
-  t->nice = thread_current()->nice;;
-  t->recent_cpu = thread_current()->recent_cpu;
   
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
