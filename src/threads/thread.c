@@ -467,10 +467,6 @@ thread_yield (void)
       list_insert_ordered (&ready_list, &cur->elem, thread_compare_priority, NULL);
     else
     {
-      ASSERT(cur->priority >= -4);
-      ASSERT(cur->priority >= -3);
-      ASSERT(cur->priority >= -2);
-      ASSERT(cur->priority >= -1);
       ASSERT(cur->priority >= 0);
       ASSERT(cur->priority <= 63);
       list_push_back(&mlfqs_ready_list[cur->priority], &cur->elem);
