@@ -103,6 +103,10 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+    /* variables for advanced scheduler */
+    int nice;
+    int recent_cpu;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -156,6 +160,31 @@ bool thread_check_wake(int64_t);
 /* functions for priority scheduing */
 bool thread_compare_priority(const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 
+/* functions for priority calculation */
+int mlfqs_get_ready_threads(void);
+int mlfqs_get_recent_cpu(void);
+int mlfqs_get_nice(void);
+void mlfqs_set_load_avg(void);
+void mlfqs_set_recent_cpu(void);
+void mlfqs_set_priority(void);
+void mlfqs_increase_recent_cpu(void);
+
+/* functions for fixed pointer */
+#define P 17
+#define Q 14
+#define F (1<<14)
+
+int fp_convert_nfp(int);
+int fp_convert_x_int_zero(int);
+int fp_convert_x_int_near(int);
+int fp_add_xy(int, int);
+int fp_sub_xy(int, int);
+int fp_add_xn(int, int);
+int fp_sub_xn(int, int);
+int fp_mul_xy(int, int);
+int fp_mul_xn(int, int);
+int fp_div_xy(int, int);
+int fp_div_xn(int, int);
 
 
 #endif /* threads/thread.h */
