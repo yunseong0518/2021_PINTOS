@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "lib/string.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -31,6 +32,14 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
 
+  // parsing file name
+  char *file_name_origin;
+  char *program_name;
+  char *ptr;
+
+  strcpy(file_name_origin, file_name);
+  program_name = strtok_r(file_name_origin, " ", &ptr);
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -39,7 +48,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (program_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -54,17 +63,84 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
 
+  // variable for parsing file name
+  char *program_name;
+  char argument[128];
+  char *argu_address[128];
+  int argu_num;
+  int argu_size;
+  char *ptr;
+  char *token;
+
+  argu_num = 0;
+  argu_size = 0;
+
+  // parsing file name for program name
+  program_name = strtok_r(file_name_, " ", &ptr);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (program_name, &if_.eip, &if_.esp);
+
+  // parsing all argument
+  do {
+    token = strtok_r(NULL, " ", &ptr);
+    if (token != NULL) {
+      argu_num++;
+      argu_size += strlen(token) + 1;
+    }
+  } while (!token);
+
+  // push argument
+  int i;
+  int argu_num_tmp = argu_num;
+  int program_name_length = strlen(program_name);
+  for (i = argu_size - 1; i >= 0; i--) {
+    argument[i] = file_name_[i + program_name_length + 1];
+    if_.esp--;
+    *(char *)if_.esp = argument[i];
+    if (argument[i] == '\0' && i != argu_size - 1) {
+      argu_address[argu_num_tmp--] = if_.esp + 1;
+    }
+  }
+
+  // align
+  for (i = 0; i < 4 - argu_size % 4; i++) {
+    if_.esp--;
+    *(uint8_t *)if_.esp = 0;
+  }
+
+  // null
+  if_.esp -= 4;
+  *(char **)if_.esp = 0;
+
+  // push argument address
+  for (i = argu_num - 1; i >= 0; i--) {
+    if_.esp -= 4;
+    *(char **)if_.esp = argu_address[i];
+  }
+
+  // argv
+  if_.esp -= 4;
+  *(char ***)if_.esp = (char **)(if_.esp + 4);
+
+  // argc
+  if_.esp -= 4;
+  *(int *)if_.esp = argu_num;
+
+  // return address
+  if_.esp -= 4;
+  *(int *)if_.esp = 0;
+
 
   /* If load failed, quit. */
-  palloc_free_page (file_name);
+  palloc_free_page (program_name);
   if (!success) 
     thread_exit ();
+    
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
