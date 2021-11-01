@@ -33,11 +33,11 @@ process_execute (const char *file_name)
   tid_t tid;
 
   // parsing file name
-  char *file_name_origin;
+  char file_name_origin[128];
   char *program_name;
   char *ptr;
 
-  strcpy(file_name_origin, file_name);
+  strlcpy(file_name_origin, file_name, strlen(file_name));
   program_name = strtok_r(file_name_origin, " ", &ptr);
 
   /* Make a copy of FILE_NAME.
@@ -99,7 +99,7 @@ start_process (void *file_name_)
   int argu_num_tmp = argu_num;
   int program_name_length = strlen(program_name);
   for (i = argu_size - 1; i >= 0; i--) {
-    argument[i] = file_name_[i + program_name_length + 1];
+    argument[i] = file_name[i + program_name_length + 1];
     if_.esp--;
     *(char *)if_.esp = argument[i];
     if (argument[i] == '\0' && i != argu_size - 1) {
