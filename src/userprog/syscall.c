@@ -96,10 +96,10 @@ syscall_handler (struct intr_frame *f)
     {
       char *name;
       syscall_check_vaddr(f->esp + 4);
-      name = (char *)*(char **)(f->esp + 4);
-      if(name == NULL) syscall_exit(-1); 
+      name = *(char **)(f->esp + 4);
+      if(name == NULL) syscall_exit(-1);
       int fd;
-      fd = thread_current()->fd_count++;
+      fd = thread_current()-> fd_count++;
       thread_current()->fd_table[fd] = filesys_open(name);
       if (thread_current()->fd_table[fd] == NULL)
         f->eax = -1;
@@ -208,7 +208,12 @@ syscall_handler (struct intr_frame *f)
       fd = *(int *)(f->esp + 4);
       struct file* fi;
       fi = thread_current()->fd_table[fd];
-      file_close(fi);
+      if(fi == NULL) 
+        syscall_exit(-1);
+      thread_current()->fd_table[fd] = NULL;
+      thread_current()->fd_count--;
+        file_close(fi);
+      
       break;
     }
   }
