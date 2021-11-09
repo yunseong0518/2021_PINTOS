@@ -30,7 +30,7 @@ void syscall_exit(int status) {
 
 void syscall_check_vaddr(const void *vaddr) {
   if (!is_user_vaddr(vaddr))
-    syscall_exit(-1);
+     syscall_exit(-1);
 }
 
 static void
@@ -79,10 +79,11 @@ syscall_handler (struct intr_frame *f)
       char *name;
       syscall_check_vaddr(f->esp + 4);
       name = *(char **)(f->esp + 4);
-      unsigned size;
+      int size;
       syscall_check_vaddr(f->esp + 8);
       size = *(int *)(f->esp + 8);
-      *(bool *)(f->eax) = filesys_create(name, size);
+      if(name == NULL || size == 0) *(bool *)(f->eax) = false; 
+      else *(bool *)(f->eax) = filesys_create(name, size);
       break;
     }
     case SYS_REMOVE:
