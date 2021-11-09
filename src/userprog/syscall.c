@@ -21,10 +21,8 @@ syscall_init (void)
 }
 
 void syscall_exit(int status) {
-    char name[16];
     thread_current()->exit_status = status;
-    strlcpy(name, thread_current()->name, strlen(thread_current()->name) + 1);
-    printf("%s: exit(%d)\n", name, status);
+    printf("%s: exit(%d)\n", thread_current()->name, status);
     thread_exit();
 }
 
@@ -36,7 +34,6 @@ void syscall_check_vaddr(const void *vaddr) {
 static void
 syscall_handler (struct intr_frame *f) 
 {
-  //printf("call syscall_handler with %d\n", *(uint32_t*)(f->esp));
   syscall_check_vaddr(f->esp);
   switch((uint32_t)*(uint32_t*)(f->esp)) {
     case SYS_HALT:
@@ -59,11 +56,11 @@ syscall_handler (struct intr_frame *f)
       tid = process_execute(file_name);
 
       if (get_child_process(tid) == NULL)
-        *(tid_t *)(f->eax) = -1;
+        (f->eax) = -1;
       else if (get_child_process(tid)->is_use_memory)
-        *(tid_t *)(f->eax) = tid;
+        (f->eax) = tid;
       else
-        *(tid_t *)(f->eax) = -1;
+        (f->eax) = -1;
       break;
     }
     case SYS_WAIT:
@@ -71,19 +68,19 @@ syscall_handler (struct intr_frame *f)
       tid_t tid;
       syscall_check_vaddr(f->esp + 4);
       tid = (tid_t)*(tid_t *)(f->esp + 4);
-      *(int *)(f->eax) = process_wait(tid);
+      (f->eax) = process_wait(tid);
       break;
     }
     case SYS_CREATE:
     {
       char *name;
-      syscall_check_vaddr(f->esp + 4);
-      name = *(char **)(f->esp + 4);
-      int size;
-      syscall_check_vaddr(f->esp + 8);
-      size = *(int *)(f->esp + 8);
-      if(name == NULL || size == 0) *(bool *)(f->eax) = false; 
-      else *(bool *)(f->eax) = filesys_create(name, size);
+      syscall_check_vaddr(f->esp + 16);
+      name = *(char **)(f->esp + 16);
+      unsigned size;
+      syscall_check_vaddr(f->esp + 20);
+      size = *(unsigned *)(f->esp + 20);
+      if(name == NULL) syscall_exit(-1); 
+      else (f->eax) = filesys_create(name, size);
       break;
     }
     case SYS_REMOVE:
@@ -91,7 +88,8 @@ syscall_handler (struct intr_frame *f)
       char *name;
       syscall_check_vaddr(f->esp + 4);
       name = *(char **)(f->esp + 4);
-      *(bool *)(f->eax) = filesys_remove(name);
+      if(name == NULL) syscall_exit(-1); 
+      (f->eax) = filesys_remove(name);
       break;
     }
     case SYS_OPEN:
@@ -99,13 +97,14 @@ syscall_handler (struct intr_frame *f)
       char *name;
       syscall_check_vaddr(f->esp + 4);
       name = (char *)*(char **)(f->esp + 4);
+      if(name == NULL) syscall_exit(-1); 
       int fd;
       fd = thread_current()->fd_count++;
       thread_current()->fd_table[fd] = filesys_open(name);
       if (thread_current()->fd_table[fd] == NULL)
-        *(int *)f->eax = -1;
+        f->eax = -1;
       else 
-        *(int *)f->eax = fd;
+        f->eax = fd;
       break;
     }
     case SYS_FILESIZE: 
@@ -116,9 +115,9 @@ syscall_handler (struct intr_frame *f)
       struct file* fi;
       fi = thread_current()->fd_table[fd];
       if (fi == NULL)
-        *(int *)f->eax = -1;
+        f->eax = -1;
       else
-        *(int *)f->eax = file_length(fi);
+        f->eax = file_length(fi);
       break;
     }
     case SYS_READ:
@@ -136,17 +135,17 @@ syscall_handler (struct intr_frame *f)
       struct file* fi;
       fi = thread_current()->fd_table[fd];
       if (fi == NULL)
-        *(int *)(f->eax) = -1;
+        (f->eax) = -1;
       else {
         if (fd == 0) {
           int i;
           for (i = 0; i < length; i++) {
             buf[i] = input_getc();
           }
-          *(int *)(f->eax) = i;
+          (f->eax) = i;
         }
         else {
-          *(int *)(f->eax) = file_read(fi, buf, length);
+          (f->eax) = file_read(fi, buf, length);
         }
       }
       lock_release(&filesys_lock);
@@ -167,14 +166,14 @@ syscall_handler (struct intr_frame *f)
       if (fd == 1) {
         // print on STDOUT
         putbuf(buffer, size);
-        *(int *)(f->eax) = size;
+        (f->eax) = size;
       } else {
         struct file *fi;
         fi = thread_current()->fd_table[fd];
         if (fi == NULL)
-          *(int *)(f->eax) = -1;
+          (f->eax) = -1;
         else
-          *(int *)(f->eax) = file_write(fi, buffer, size);
+          (f->eax) = file_write(fi, buffer, size);
       }
       lock_release(&filesys_lock);
       break;
@@ -199,7 +198,7 @@ syscall_handler (struct intr_frame *f)
       fd = *(int *)(f->esp + 4);
       struct file* fi;
       fi = thread_current()->fd_table[fd];
-        *(unsigned *)(f->eax) = file_tell(fi);
+      (f->eax) = file_tell(fi);
       break;
     }
     case SYS_CLOSE:

@@ -181,10 +181,10 @@ start_process (void *file_name_)
 
   //hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
   
-  sema_up(&thread_current()->parent_thread->load_sema);
 
   /* If load failed, quit. */
   palloc_free_page (program_name);
+  sema_up(&thread_current()->parent_thread->load_sema);
   if (!success) {
     thread_current()->is_use_memory = false;
     thread_exit ();
@@ -219,13 +219,16 @@ process_wait (tid_t child_tid)
   struct thread* t;
   struct list_elem *e;
   struct thread* cur;
+  int status;
   cur = thread_current();
   for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
     t = list_entry(e, struct thread, child_elem);
     if (t->tid == child_tid) {
       sema_down(&t->exit_sema);
+      status = t->exit_status;
       list_remove(&t->child_elem);
-      return t->exit_status;
+      sema_up(&t->mem_sema);
+      return status;
     }
   }
     return -1;
@@ -262,6 +265,7 @@ process_exit (void)
       pagedir_destroy (pd);
     }
     sema_up(&cur->exit_sema);
+    sema_down(&cur->mem_sema);
 }
 
 /* Sets up the CPU for running user code in the current
