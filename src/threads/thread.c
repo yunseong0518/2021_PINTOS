@@ -375,7 +375,7 @@ thread_get_recent_cpu (void)
   /* Not yet implemented. */
   return 0;
 }
-
+
 /* Idle thread.  Executes when no other thread is ready to run.
 
    The idle thread is initially put on the ready list by
@@ -464,6 +464,28 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
+  #ifdef USERPROG
+    t->fd_count = 2;
+
+    list_init(&t->child_list);
+    sema_init(&t->exit_sema, 0);
+    sema_init(&t->load_sema, 0);
+    t->is_use_memory = false;
+    t->is_finish = false;
+    int i;
+    for (i = 0; i < 128; i++) {
+      t->fd_table[i] = NULL;
+    }
+
+    if (strcmp(name,"main") != 0) {
+      t->parent_thread = thread_current();
+      list_push_back(&thread_current()->child_list, &t->child_elem);
+    }
+    else {
+      t->parent_thread = NULL;
+    }
+  #endif
+
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
@@ -538,7 +560,7 @@ thread_schedule_tail (struct thread *prev)
   if (prev != NULL && prev->status == THREAD_DYING && prev != initial_thread) 
     {
       ASSERT (prev != cur);
-      palloc_free_page (prev);
+      //palloc_free_page (prev);
     }
 }
 
