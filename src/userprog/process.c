@@ -22,6 +22,24 @@
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 
+struct thread* get_child_process (int pid)
+{
+  struct list_elem *e;
+  struct thread* cur;
+  cur = thread_current();
+  for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+    if (list_entry(e, struct thread, child_elem)->tid == pid) {
+      return list_entry(e, struct thread, child_elem);
+    }
+  }
+  return NULL;
+}
+
+void remove_child_process (struct thread *cp)
+{
+  list_remove(&cp->child_elem);
+}
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -31,13 +49,14 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
+  // printf("call process_execute with $%s\n", file_name);
 
   // parsing file name
   char file_name_origin[128];
   char *program_name;
   char *ptr;
 
-  strlcpy(file_name_origin, file_name, strlen(file_name));
+  strlcpy(file_name_origin, file_name, strlen(file_name)+1);
   program_name = strtok_r(file_name_origin, " ", &ptr);
 
   /* Make a copy of FILE_NAME.
@@ -49,6 +68,8 @@ process_execute (const char *file_name)
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (program_name, PRI_DEFAULT, start_process, fn_copy);
+  sema_down(&thread_current()->load_sema);
+
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -64,19 +85,40 @@ start_process (void *file_name_)
   bool success;
 
   // variable for parsing file name
+  char file_name_no_double[128];
   char *program_name;
+  char *real_program_name;
   char argument[128];
   char *argu_address[128];
   int argu_num;
   int argu_size;
+  char *tmp_ptr;
   char *ptr;
   char *token;
 
   argu_num = 0;
   argu_size = 0;
 
+  int i, j;
+  for (i = 0, j = 0; i < strlen(file_name); i++) {
+    if (i == 0) {
+      file_name_no_double[j++] = file_name[i];
+    }
+    else {
+      if (file_name[i - 1] == ' ' && file_name[i] == ' ')
+        continue;
+      else {
+        file_name_no_double[j++] = file_name[i];
+      }
+    }
+  }
+
+
   // parsing file name for program name
-  program_name = strtok_r(file_name_, " ", &ptr);
+  program_name = strtok_r(file_name_, " ", &tmp_ptr);
+  real_program_name = strtok_r(file_name_no_double, " ", &ptr);
+  argu_num++;
+  argu_size += strlen(program_name) + 1;
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -92,20 +134,22 @@ start_process (void *file_name_)
       argu_num++;
       argu_size += strlen(token) + 1;
     }
-  } while (!token);
+  } while (token);
 
   // push argument
-  int i;
   int argu_num_tmp = argu_num;
   int program_name_length = strlen(program_name);
+
   for (i = argu_size - 1; i >= 0; i--) {
-    argument[i] = file_name[i + program_name_length + 1];
+    argument[i] = file_name_no_double[i];
     if_.esp--;
     *(char *)if_.esp = argument[i];
     if (argument[i] == '\0' && i != argu_size - 1) {
-      argu_address[argu_num_tmp--] = if_.esp + 1;
+      argu_address[--argu_num_tmp] = if_.esp + 1;
     }
   }
+  argu_address[--argu_num_tmp] = if_.esp;
+
 
   // align
   for (i = 0; i < 4 - argu_size % 4; i++) {
@@ -135,11 +179,19 @@ start_process (void *file_name_)
   if_.esp -= 4;
   *(int *)if_.esp = 0;
 
+  //hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
+  
+  sema_up(&thread_current()->parent_thread->load_sema);
 
   /* If load failed, quit. */
   palloc_free_page (program_name);
-  if (!success) 
+  if (!success) {
+    thread_current()->is_use_memory = false;
     thread_exit ();
+  }
+  else {
+    thread_current()->is_use_memory = true;
+  }
     
 
   /* Start the user process by simulating a return from an
@@ -162,9 +214,21 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  return -1;
+  struct thread* t;
+  struct list_elem *e;
+  struct thread* cur;
+  cur = thread_current();
+  for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+    t = list_entry(e, struct thread, child_elem);
+    if (t->tid == child_tid) {
+      sema_down(&t->exit_sema);
+      list_remove(&t->child_elem);
+      return t->exit_status;
+    }
+  }
+    return -1;
 }
 
 /* Free the current process's resources. */
@@ -173,6 +237,13 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  int i;
+  for (i = 2; i < 128; i++) {
+    if (cur->fd_table[i] != NULL)
+      file_close(cur->fd_table[i]);
+    cur->fd_table[i] = NULL;
+  }
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -190,6 +261,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+    sema_up(&cur->exit_sema);
 }
 
 /* Sets up the CPU for running user code in the current
@@ -207,7 +279,7 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
+
 /* We load ELF binaries.  The following definitions are taken
    from the ELF specification, [ELF1], more-or-less verbatim.  */
 
