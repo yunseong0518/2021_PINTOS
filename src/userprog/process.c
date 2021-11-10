@@ -66,6 +66,10 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  if(filesys_open(file_name_origin) == NULL){
+    return -1;
+  }
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (program_name, PRI_DEFAULT, start_process, fn_copy);
   sema_down(&thread_current()->load_sema);
