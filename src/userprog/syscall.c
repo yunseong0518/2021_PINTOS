@@ -129,13 +129,14 @@ syscall_handler (struct intr_frame *f)
       char* buf;
       syscall_check_vaddr(f->esp + 8);
       buf = *(char **)(f->esp + 8);
+      syscall_check_vaddr(buf);
       int length;
       syscall_check_vaddr(f->esp + 12);
       length = *(int *)(f->esp + 12);
       struct file* fi;
       fi = thread_current()->fd_table[fd];
       if (fi == NULL)
-        (f->eax) = -1;
+        syscall_exit(-1);
       else {
         if (fd == 0) {
           int i;
