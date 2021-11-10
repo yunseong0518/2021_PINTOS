@@ -94,6 +94,8 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_OPEN:
     {
+      lock_acquire(&filesys_lock);
+      // printf("call SYS_OPEN\n");
       char *name;
       syscall_check_vaddr(f->esp + 4);
       name = *(char **)(f->esp + 4);
@@ -108,6 +110,7 @@ syscall_handler (struct intr_frame *f)
           file_deny_write(filesys_open(name));
         f->eax = fd;
       }
+      lock_release(&filesys_lock);
       break;
     }
     case SYS_FILESIZE: 
@@ -138,8 +141,10 @@ syscall_handler (struct intr_frame *f)
       length = *(int *)(f->esp + 12);
       struct file* fi;
       fi = thread_current()->fd_table[fd];
-      if (fi == NULL)
+      if (fi == NULL) {
+        lock_release(&filesys_lock);
         syscall_exit(-1);
+      }
       else {
         if (fd == 0) {
           int i;

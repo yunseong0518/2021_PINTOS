@@ -242,6 +242,7 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
+  // printf("call process_exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
@@ -251,6 +252,7 @@ process_exit (void)
       file_close(cur->fd_table[i]);
     cur->fd_table[i] = NULL;
   }
+
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -268,6 +270,10 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+    printf("finish destroy pagedir in %d\n", cur->tid);
+    file_close(cur->running_file);
+    // printf("finish file_close\n");
     sema_up(&cur->exit_sema);
     sema_down(&cur->mem_sema);
 }
@@ -377,13 +383,28 @@ load (const char *file_name, void (**eip) (void), void **esp)
     goto done;
   process_activate ();
 
+  // printf("call load\n");
+
+  lock_acquire(&t->file_open_lock);
+  // printf("finish lock_acquire\n");
   /* Open executable file. */
   file = filesys_open (file_name);
+
+  // printf("finish filesys_open\n");
+  
+
   if (file == NULL) 
     {
+      lock_release(&t->file_open_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+
+  t->running_file = file;
+  file_deny_write(file);
+  lock_release(&t->file_open_lock);
+
+  // printf("finish file_deny_write\n");
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
@@ -468,10 +489,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
+  // file_close (file);
   return success;
 }
-
+
 /* load() helpers. */
 
 static bool install_page (void *upage, void *kpage, bool writable);

@@ -113,6 +113,9 @@ struct thread
    struct semaphore load_sema;
    struct file *current;
    int exit_status;
+   struct lock file_open_lock;
+
+   struct file* running_file;
 
 #endif
 
