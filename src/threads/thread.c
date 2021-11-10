@@ -469,6 +469,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
     list_init(&t->child_list);
     sema_init(&t->exit_sema, 0);
+    sema_init(&t->mem_sema, 0);
     sema_init(&t->load_sema, 0);
     t->is_use_memory = false;
     t->is_finish = false;
@@ -479,7 +480,7 @@ init_thread (struct thread *t, const char *name, int priority)
 
     if (strcmp(name,"main") != 0) {
       t->parent_thread = thread_current();
-      list_push_back(&thread_current()->child_list, &t->child_elem);
+      list_push_back(&running_thread()->child_list, &t->child_elem);
     }
     else {
       t->parent_thread = NULL;

@@ -109,7 +109,9 @@ struct thread
    bool is_use_memory;
    bool is_finish;
    struct semaphore exit_sema;
+   struct semaphore mem_sema;
    struct semaphore load_sema;
+   struct file *current;
    int exit_status;
 
 #endif

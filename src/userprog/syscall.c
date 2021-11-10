@@ -176,8 +176,12 @@ syscall_handler (struct intr_frame *f)
         fi = thread_current()->fd_table[fd];
         if (fi == NULL)
           (f->eax) = -1;
-        else
+        else{
+          if(thread_current()->fd_table[fd]->deny_write){
+            file_deny_write(fi);
+          }
           (f->eax) = file_write(fi, buffer, size);
+        }
       }
       lock_release(&filesys_lock);
       break;
