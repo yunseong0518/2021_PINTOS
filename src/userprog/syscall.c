@@ -103,8 +103,11 @@ syscall_handler (struct intr_frame *f)
       thread_current()->fd_table[fd] = filesys_open(name);
       if (thread_current()->fd_table[fd] == NULL)
         f->eax = -1;
-      else 
+      else {
+        if(strcmp(thread_current()->name, name) == 0)
+          file_deny_write(filesys_open(name));
         f->eax = fd;
+      }
       break;
     }
     case SYS_FILESIZE: 
