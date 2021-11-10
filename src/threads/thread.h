@@ -114,6 +114,7 @@ struct thread
    struct file *current;
    int exit_status;
    struct lock file_open_lock;
+   struct lock file_close_lock;
 
    struct file* running_file;
 

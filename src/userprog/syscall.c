@@ -106,8 +106,8 @@ syscall_handler (struct intr_frame *f)
       if (thread_current()->fd_table[fd] == NULL)
         f->eax = -1;
       else {
-        if(strcmp(thread_current()->name, name) == 0)
-          file_deny_write(filesys_open(name));
+        // if(strcmp(thread_current()->name, name) == 0)
+        //   file_deny_write(filesys_open(name));
         f->eax = fd;
       }
       lock_release(&filesys_lock);
@@ -179,13 +179,16 @@ syscall_handler (struct intr_frame *f)
       } else {
         struct file *fi;
         fi = thread_current()->fd_table[fd];
-        if (fi == NULL)
+        if (fi == NULL) {
           (f->eax) = -1;
+        }
         else{
           //if(thread_current()->fd_table[fd]->deny_write){
           //  file_deny_write(fi);
           //}
+          // printf("\ttry file_write in SYS_WRITE in %s\n", thread_current()->name);
           (f->eax) = file_write(fi, buffer, size);
+          // printf("\tfinish file_write in SYS_WRITE in %s\n", thread_current()->name);
         }
       }
       lock_release(&filesys_lock);

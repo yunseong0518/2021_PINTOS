@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "lib/string.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -270,10 +271,9 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
-    printf("finish destroy pagedir in %d\n", cur->tid);
+    
     file_close(cur->running_file);
-    // printf("finish file_close\n");
+    // printf("finish file_close in %s\n", cur->name);
     sema_up(&cur->exit_sema);
     sema_down(&cur->mem_sema);
 }
@@ -388,6 +388,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   lock_acquire(&t->file_open_lock);
   // printf("finish lock_acquire\n");
   /* Open executable file. */
+  // printf("\topen file %s in %s\n", file_name, t->name);
   file = filesys_open (file_name);
 
   // printf("finish filesys_open\n");
@@ -402,6 +403,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   t->running_file = file;
   file_deny_write(file);
+  // printf("\tfinish deny %s in %s\n", file_name, t->name);
+  // printf("\t\tfile_deny : %d\n", get_deny_write(file));
   lock_release(&t->file_open_lock);
 
   // printf("finish file_deny_write\n");
