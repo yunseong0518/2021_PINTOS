@@ -476,7 +476,7 @@ init_thread (struct thread *t, const char *name, int priority)
     t->is_use_memory = false;
     t->is_finish = false;
     int i;
-    for (i = 0; i < 128; i++) {
+    for (i = 0; i < 130; i++) {
       t->fd_table[i] = NULL;
     }
 

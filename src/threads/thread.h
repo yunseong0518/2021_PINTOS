@@ -99,7 +99,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 
     /* variables for file descriptor */
-   struct file *fd_table[128];
+   struct file *fd_table[130];
    int fd_count;
 
     /* variables for child process */

@@ -101,7 +101,18 @@ syscall_handler (struct intr_frame *f)
       name = *(char **)(f->esp + 4);
       if(name == NULL) syscall_exit(-1);
       int fd;
-      fd = thread_current()-> fd_count++;
+      fd = -1;
+      int i;
+      for (i = 3; i < 130; i++) {
+        if (thread_current()->fd_table[i] == NULL) {
+          fd = i;
+          break;
+        }
+      }
+      if (fd == -1) {
+        f->eax = -1;
+        break;
+      }
       thread_current()->fd_table[fd] = filesys_open(name);
       if (thread_current()->fd_table[fd] == NULL)
         f->eax = -1;

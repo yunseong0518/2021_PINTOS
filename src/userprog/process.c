@@ -232,7 +232,7 @@ process_wait (tid_t child_tid)
       sema_down(&t->exit_sema);
       status = t->exit_status;
       list_remove(&t->child_elem);
-      sema_up(&t->mem_sema);
+      // sema_up(&t->mem_sema);
       return status;
     }
   }
@@ -254,6 +254,10 @@ process_exit (void)
     cur->fd_table[i] = NULL;
   }
 
+    file_close(cur->running_file);
+    // printf("finish file_close in %s\n", cur->name);
+    sema_up(&cur->exit_sema);
+    // sema_down(&cur->mem_sema);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -272,10 +276,6 @@ process_exit (void)
       pagedir_destroy (pd);
     }
     
-    file_close(cur->running_file);
-    // printf("finish file_close in %s\n", cur->name);
-    sema_up(&cur->exit_sema);
-    sema_down(&cur->mem_sema);
 }
 
 /* Sets up the CPU for running user code in the current
