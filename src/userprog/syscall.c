@@ -53,14 +53,7 @@ syscall_handler (struct intr_frame *f)
       tid_t tid;
       syscall_check_vaddr(f->esp + 4);
       file_name = *(char **)(f->esp + 4);
-      tid = process_execute(file_name);
-
-      if (get_child_process(tid) == NULL)
-        (f->eax) = -1;
-      else if (get_child_process(tid)->is_use_memory)
-        (f->eax) = tid;
-      else
-        (f->eax) = -1;
+      f->eax = process_execute(file_name);
       break;
     }
     case SYS_WAIT:

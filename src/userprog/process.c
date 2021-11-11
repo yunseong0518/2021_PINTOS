@@ -41,6 +41,12 @@ void remove_child_process (struct thread *cp)
   list_remove(&cp->child_elem);
 }
 
+struct shared_param {
+  char *fn_copy;
+  struct semaphore load_sema;
+  bool success;
+};
+
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -51,6 +57,8 @@ process_execute (const char *file_name)
   char *fn_copy;
   tid_t tid;
   // printf("call process_execute with $%s\n", file_name);
+
+  struct shared_param param;
 
   // parsing file name
   char file_name_origin[128];
@@ -67,25 +75,32 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  if(filesys_open(file_name_origin) == NULL){
-    return -1;
-  }
+  param.fn_copy = fn_copy;
+  sema_init(&param.load_sema, 0);
+  param.success = false;
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (program_name, PRI_DEFAULT, start_process, fn_copy);
-  sema_down(&thread_current()->load_sema);
+  tid = thread_create (program_name, PRI_DEFAULT, start_process, &param);
 
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
+  else {
+
+    sema_down(&param.load_sema);
+    if (!param.success) {
+      return -1;
+    }
+  }
   return tid;
 }
 
 /* A thread function that loads a user process and starts it
    running. */
 static void
-start_process (void *file_name_)
+start_process (void *param_)
 {
-  char *file_name = file_name_;
+  struct shared_param *param = param_;
+  char *file_name = param->fn_copy;
   struct intr_frame if_;
   bool success;
 
@@ -120,7 +135,7 @@ start_process (void *file_name_)
 
 
   // parsing file name for program name
-  program_name = strtok_r(file_name_, " ", &tmp_ptr);
+  program_name = strtok_r(param->fn_copy, " ", &tmp_ptr);
   real_program_name = strtok_r(file_name_no_double, " ", &ptr);
   argu_num++;
   argu_size += strlen(program_name) + 1;
@@ -131,6 +146,9 @@ start_process (void *file_name_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (program_name, &if_.eip, &if_.esp);
+
+  if (success) {
+
 
   // parsing all argument
   do {
@@ -185,17 +203,15 @@ start_process (void *file_name_)
   *(int *)if_.esp = 0;
 
   //hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
+  }
   
 
   /* If load failed, quit. */
-  palloc_free_page (program_name);
-  sema_up(&thread_current()->parent_thread->load_sema);
+  palloc_free_page (param->fn_copy);
+  param->success = success;
+  sema_up(&param->load_sema);
   if (!success) {
-    thread_current()->is_use_memory = false;
     thread_exit ();
-  }
-  else {
-    thread_current()->is_use_memory = true;
   }
     
 
