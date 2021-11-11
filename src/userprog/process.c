@@ -82,11 +82,14 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (program_name, PRI_DEFAULT, start_process, &param);
 
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy);
+  if (tid == TID_ERROR) {
+    if (fn_copy != NULL)
+      palloc_free_page (fn_copy);
+  }
   else {
-
+    // printf("before load sema down %d, %s\n", thread_current()->tid, thread_current()->name);
     sema_down(&param.load_sema);
+    // printf("after load sema down %d, %s\n", thread_current()->tid, thread_current()->name);
     if (!param.success) {
       return -1;
     }
@@ -207,7 +210,8 @@ start_process (void *param_)
   
 
   /* If load failed, quit. */
-  palloc_free_page (param->fn_copy);
+  if (param->fn_copy != NULL)
+    palloc_free_page (param->fn_copy); 
   param->success = success;
   sema_up(&param->load_sema);
   if (!success) {
@@ -242,13 +246,17 @@ process_wait (tid_t child_tid)
   struct thread* cur;
   int status;
   cur = thread_current();
+  // printf("process wait %d, %s\n", cur->tid, cur->name);
   for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
     t = list_entry(e, struct thread, child_elem);
     if (t->tid == child_tid) {
+      // printf("before exit sema down %d, %s\n", cur->tid, cur->name);
       sema_down(&t->exit_sema);
+      // printf("after exit sema down %d, %s\n", cur->tid, cur->name);
       status = t->exit_status;
+      // printf("exit_status : %d, %s\n", status, cur->name);
       list_remove(&t->child_elem);
-      // sema_up(&t->mem_sema);
+      sema_up(&t->mem_sema);
       return status;
     }
   }
@@ -259,9 +267,17 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
-  // printf("call process_exit\n");
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  // printf("call process_exit in %d\n", cur->tid);
+
+  struct list_elem *e;
+  for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
+    struct thread *t;
+    t = list_entry(e, struct thread, child_elem);
+    // printf("wait for %d\n", t->tid);
+    process_wait(t->tid);
+  }
 
   int i;
   for (i = 2; i < FD_MAX; i++) {
@@ -273,7 +289,7 @@ process_exit (void)
     file_close(cur->running_file);
     // printf("finish file_close in %s\n", cur->name);
     sema_up(&cur->exit_sema);
-    // sema_down(&cur->mem_sema);
+    sema_down(&cur->mem_sema);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -413,7 +429,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
   if (file == NULL) 
     {
       lock_release(&t->file_open_lock);
-      printf ("load: %s: open failed\n", file_name);
+      // printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
 
@@ -600,7 +616,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
-          palloc_free_page (kpage);
+          if (kpage != NULL)
+            palloc_free_page (kpage);
           return false; 
         }
       memset (kpage + page_read_bytes, 0, page_zero_bytes);
@@ -608,7 +625,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       /* Add the page to the process's address space. */
       if (!install_page (upage, kpage, writable)) 
         {
-          palloc_free_page (kpage);
+          if (kpage != NULL)
+            palloc_free_page (kpage);
           return false; 
         }
 
@@ -634,8 +652,10 @@ setup_stack (void **esp)
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
         *esp = PHYS_BASE;
-      else
-        palloc_free_page (kpage);
+      else {
+        if (kpage != NULL)
+          palloc_free_page (kpage);
+      }
     }
   return success;
 }
