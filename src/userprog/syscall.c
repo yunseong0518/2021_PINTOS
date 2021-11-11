@@ -96,7 +96,7 @@ syscall_handler (struct intr_frame *f)
       int fd;
       fd = -1;
       int i;
-      for (i = 3; i < 130; i++) {
+      for (i = 3; i < FD_MAX; i++) {
         if (thread_current()->fd_table[i] == NULL) {
           fd = i;
           break;
@@ -104,6 +104,7 @@ syscall_handler (struct intr_frame *f)
       }
       if (fd == -1) {
         f->eax = -1;
+        lock_release(&filesys_lock);
         break;
       }
       thread_current()->fd_table[fd] = filesys_open(name);

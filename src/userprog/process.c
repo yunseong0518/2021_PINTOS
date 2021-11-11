@@ -264,7 +264,7 @@ process_exit (void)
   uint32_t *pd;
 
   int i;
-  for (i = 2; i < 128; i++) {
+  for (i = 2; i < FD_MAX; i++) {
     if (cur->fd_table[i] != NULL)
       file_close(cur->fd_table[i]);
     cur->fd_table[i] = NULL;

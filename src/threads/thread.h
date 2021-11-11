@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include "threads/synch.h"
 
+#define FD_MAX 130
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -99,7 +101,7 @@ struct thread
     uint32_t *pagedir;                  /* Page directory. */
 
     /* variables for file descriptor */
-   struct file *fd_table[130];
+   struct file *fd_table[FD_MAX];
    int fd_count;
 
     /* variables for child process */
