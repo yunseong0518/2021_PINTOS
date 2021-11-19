@@ -67,11 +67,11 @@ syscall_handler (struct intr_frame *f)
     case SYS_CREATE:
     {
       char *name;
-      syscall_check_vaddr(f->esp + 16);
-      name = *(char **)(f->esp + 16);
+      syscall_check_vaddr(f->esp + 4);
+      name = *(char **)(f->esp + 4);
       unsigned size;
-      syscall_check_vaddr(f->esp + 20);
-      size = *(unsigned *)(f->esp + 20);
+      syscall_check_vaddr(f->esp + 8);
+      size = *(unsigned *)(f->esp + 8);
       if(name == NULL) syscall_exit(-1); 
       else (f->eax) = filesys_create(name, size);
       break;
