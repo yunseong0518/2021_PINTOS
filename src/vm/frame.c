@@ -38,7 +38,7 @@ void* frame_free_page (void *kpage)
     struct frame_entry* fe;
     fe = frame_lookup(kpage);
     ASSERT (fe);
-    list_remove (fe->elem);
+    list_remove (&fe->elem);
     palloc_free_page(kpage);
 }
 
