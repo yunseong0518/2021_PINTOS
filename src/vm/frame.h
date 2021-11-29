@@ -3,7 +3,9 @@
 
 #include <stdio.h>
 #include <list.h>
+#include "threads/thread.h"
 #include "threads/synch.h"
+#include "threads/palloc.h"
 
 struct frame_entry
 {
@@ -15,7 +17,10 @@ struct frame_entry
 };
 
 struct list frame_table;
-
 struct lock frame_lock;
+
+void frame_init (void);
+void* frame_get_page (enum palloc_flags flags);
+void frame_free_page (void *kpage);
 
 #endif // VM_FRAME_H

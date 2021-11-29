@@ -1,8 +1,11 @@
-#include <frame.h>
+#include "vm/frame.h"
 #include "threads/palloc.h"
 #include "threads/malloc.h"
+#include "threads/thread.h"
+#include "threads/vaddr.h"
 
 static int fid_max;
+static struct frame_entry* frame_lookup (void* kpage);
 
 void frame_init (void)
 {
@@ -24,7 +27,7 @@ void* frame_get_page (enum palloc_flags flags)
         fe->tid = thread_current()->tid;
         fe->kpage = kpage;
         fe->LRU = 0;
-        list_push_back (&frame_table, fe);
+        list_push_back (&frame_table, &fe->elem);
 
         return kpage;
     } else {
@@ -32,7 +35,7 @@ void* frame_get_page (enum palloc_flags flags)
     }
 }
 
-void* frame_free_page (void *kpage)
+void frame_free_page (void *kpage)
 {
     ASSERT (is_kernel_vaddr(kpage));
     struct frame_entry* fe;
