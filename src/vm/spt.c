@@ -42,6 +42,17 @@ void spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     ASSERT (he == NULL);
 }
 
+struct spt_entry* spt_lookup (struct hash* spt, void* upage) {
+    struct spt_entry se;
+    struct hash_elem *he;
+    se.upage = upage;
+    he = hash_find (spt, &se.elem);
+    if (he == NULL)
+        return NULL;
+    else
+        return hash_entry (he, struct spt_entry, elem);
+}
+
 void spt_destroy (struct hash* spt) {
     hash_destroy (spt, NULL);
 }

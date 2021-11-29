@@ -185,6 +185,9 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  #ifdef VM
+    spt_init(&t->spt);
+  #endif
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -490,10 +493,6 @@ init_thread (struct thread *t, const char *name, int priority)
     else {
       t->parent_thread = NULL;
     }
-  #endif
-
-  #ifdef VM
-    spt_init(&t->spt);
   #endif
 
   old_level = intr_disable ();

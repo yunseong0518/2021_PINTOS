@@ -641,6 +641,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     }
   return true;
   #endif
+  #if 1
   while (read_bytes > 0 || zero_bytes > 0) {
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -650,8 +651,10 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     read_bytes -= page_read_bytes;
     zero_bytes -= page_zero_bytes;
     upage += PGSIZE;
-    ofs += PGSIZE;
+    ofs += page_read_bytes;
   }
+  #endif
+  return true;
 }
 
 /* Create a minimal stack by mapping a zeroed page at the top of
