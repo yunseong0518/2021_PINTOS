@@ -20,6 +20,7 @@ void* frame_get_page (enum palloc_flags flags)
     void* kpage;
     kpage = palloc_get_page(flags);
     if (kpage) {
+        lock_acquire(&frame_lock);
         struct frame_entry *fe;
         fe = malloc (sizeof(struct frame_entry));
         ASSERT (fe);
@@ -28,7 +29,7 @@ void* frame_get_page (enum palloc_flags flags)
         fe->kpage = kpage;
         fe->LRU = 0;
         list_push_back (&frame_table, &fe->elem);
-
+        lock_release(&frame_lock);
         return kpage;
     } else {
         PANIC("eviction requirement");

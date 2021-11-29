@@ -19,6 +19,9 @@
 #include "threads/vaddr.h"
 #include "lib/string.h"
 #include "userprog/syscall.h"
+#ifdef VM
+#include "vm/spt.h"
+#endif
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -599,6 +602,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   ASSERT (pg_ofs (upage) == 0);
   ASSERT (ofs % PGSIZE == 0);
 
+  #if 0
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
@@ -635,6 +639,21 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
     }
+  return true;
+  #endif
+  #if 1
+  while (read_bytes > 0 || zero_bytes > 0) {
+    size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+    size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+    spt_add_entry (&thread_current()->spt, upage, page_read_bytes, page_zero_bytes, file, writable, ofs, false);
+
+    read_bytes -= page_read_bytes;
+    zero_bytes -= page_zero_bytes;
+    upage += PGSIZE;
+    ofs += page_read_bytes;
+  }
+  #endif
   return true;
 }
 

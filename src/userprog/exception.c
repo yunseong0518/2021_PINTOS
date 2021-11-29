@@ -6,12 +6,27 @@
 #include "threads/thread.h"
 #include "userprog/syscall.h"
 #include "threads/vaddr.h"
+#include "userprog/pagedir.h"
+#ifdef VM
+#include "vm/spt.h"
+#endif
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
 
 static void kill (struct intr_frame *);
 static void page_fault (struct intr_frame *);
+
+static bool
+install_page (void *upage, void *kpage, bool writable)
+{
+  struct thread *t = thread_current ();
+
+  /* Verify that there's not already a page at that virtual
+     address, then map our page there. */
+  return (pagedir_get_page (t->pagedir, upage) == NULL
+          && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
 
 /* Registers handlers for interrupts that can be caused by user
    programs.
@@ -150,8 +165,25 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-   if (!user || (is_kernel_vaddr(fault_addr) || not_present)) {
-      // printf("page fault syscall_exit\n");
+   void *upage;
+   upage = pg_round_down (fault_addr);
+   struct spt_entry* se;
+   se = spt_lookup (&thread_current()->spt, upage);
+   if (se != NULL) {
+      uint8_t *kpage = frame_get_page (PAL_USER);
+
+      if (file_read_at (se->file, kpage, se->page_read_bytes, se->ofs) != (int) se->page_read_bytes)
+      {
+         PANIC ("file read panic");
+         frame_free_page (kpage);
+         return;
+      }
+      memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
+
+      install_page (upage, kpage, se->writable);
+      return;
+   }
+   else if (!user || not_present || is_kernel_vaddr(fault_addr)) {
       syscall_exit(-1);
    }
 

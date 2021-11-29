@@ -88,7 +88,6 @@ syscall_handler (struct intr_frame *f)
     case SYS_OPEN:
     {
       lock_acquire(&filesys_lock);
-      // printf("call SYS_OPEN\n");
       char *name;
       syscall_check_vaddr(f->esp + 4);
       name = *(char **)(f->esp + 4);
@@ -107,12 +106,17 @@ syscall_handler (struct intr_frame *f)
         lock_release(&filesys_lock);
         break;
       }
-      thread_current()->fd_table[fd] = filesys_open(name);
-      if (thread_current()->fd_table[fd] == NULL)
+      int k;
+      k = 1;
+      do {
+        thread_current()->fd_table[fd] = filesys_open(name);
+        k++;
+      } while (thread_current()->fd_table[fd] == NULL && k < 20);
+      // filesys open incomplete
+      if (thread_current()->fd_table[fd] == NULL) {
         f->eax = -1;
+      }
       else {
-        // if(strcmp(thread_current()->name, name) == 0)
-        //   file_deny_write(filesys_open(name));
         f->eax = fd;
       }
       lock_release(&filesys_lock);
