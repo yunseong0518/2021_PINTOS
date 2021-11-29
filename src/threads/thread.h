@@ -3,6 +3,7 @@
 
 #include <debug.h>
 #include <list.h>
+#include <hash.h>
 #include <stdint.h>
 #include "threads/synch.h"
 
@@ -120,6 +121,10 @@ struct thread
 
    struct file* running_file;
 
+#endif
+
+#ifdef VM
+   struct hash spt;
 #endif
 
     /* Owned by thread.c. */
