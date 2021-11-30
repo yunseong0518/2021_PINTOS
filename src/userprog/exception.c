@@ -181,9 +181,18 @@ page_fault (struct intr_frame *f)
       install_page (upage, kpage, se->writable);
       return;
    }
-   else if (!user || not_present || is_kernel_vaddr(fault_addr)) {
+   else if (!user || is_kernel_vaddr(fault_addr)) {
       syscall_exit(-1);
    }
+   // printf("upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
+   if (fault_addr > f->esp) {
+      uint8_t *kpage = frame_get_page (PAL_USER | PAL_ZERO);
+      install_page (upage, kpage, true);
+      return;
+   } else if (not_present) {
+      syscall_exit(-1);
+   }
+   
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to

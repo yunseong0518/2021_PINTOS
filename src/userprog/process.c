@@ -661,8 +661,8 @@ static bool
 setup_stack (void **esp) 
 {
   uint8_t *kpage;
+  
   bool success = false;
-
   kpage = frame_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
@@ -674,6 +674,7 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
+  
   return success;
 }
 
