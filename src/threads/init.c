@@ -130,9 +130,7 @@ main (void)
   filesys_init (format_filesys);
 #endif
 
-#ifdef VM
   frame_init();
-#endif
 
   printf ("Boot complete.\n");
   
