@@ -106,13 +106,16 @@ syscall_handler (struct intr_frame *f)
         lock_release(&filesys_lock);
         break;
       }
-      int k;
-      k = 1;
-      do {
-        thread_current()->fd_table[fd] = filesys_open(name);
-        k++;
-      } while (thread_current()->fd_table[fd] == NULL && k < 20);
-      // filesys open incomplete
+      thread_current()->fd_table[fd] = filesys_open(name);
+      
+      // int k;
+      // k = 1;
+      // do {
+      //   thread_current()->fd_table[fd] = filesys_open(name);
+      //   k++;
+      // } while (thread_current()->fd_table[fd] == NULL && k < FD_MAX);
+      // // filesys open incomplete
+      
       if (thread_current()->fd_table[fd] == NULL) {
         f->eax = -1;
       }
