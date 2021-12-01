@@ -168,19 +168,21 @@ page_fault (struct intr_frame *f)
    struct spt_entry* se;
    se = spt_lookup (&thread_current()->spt, upage);
    if (se != NULL) {
-      uint8_t *kpage = frame_get_page (PAL_USER);
-
-      if (file_read_at (se->file, kpage, se->page_read_bytes, se->ofs) != (int) se->page_read_bytes)
-      {
-         PANIC ("file read panic");
-         frame_free_page (kpage);
-         spt_remove_entry (&thread_current()->spt, upage);
-         return;
+      uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
+      printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
+      if (se->file != NULL) {
+         int fra;
+         printf("ofs : %d, file : %p\n", se->ofs, se->file);
+         fra = file_read_at (se->file, kpage, se->page_read_bytes, se->ofs);
+         printf("file read at : %d\n", fra);
+         if (fra != se->page_read_bytes)
+         {
+            PANIC ("file read panic");
+            return;
+         }
       }
       memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
-      printf("lazy loading k : %p, u : %p\n", kpage, upage);
       install_page (upage, kpage, se->writable);
-      spt_remove_entry (&thread_current()->spt, upage);
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
@@ -192,7 +194,8 @@ page_fault (struct intr_frame *f)
    } else if (not_present) {
       if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
          // stack growth
-         uint8_t *kpage = frame_get_page (PAL_USER | PAL_ZERO);
+         spt_add_entry (&thread_current()->spt, upage, 0, PGSIZE, NULL, true, 0, true);
+         uint8_t *kpage = spt_alloc (&thread_current()->spt, upage, PAL_USER | PAL_ZERO);
          install_page (upage, kpage, true);
          return;
       } else {

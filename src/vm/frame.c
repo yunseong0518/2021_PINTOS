@@ -14,12 +14,11 @@ void frame_init (void)
     fid_max = 0;
 }
 
-void* frame_get_page (enum palloc_flags flags) 
+struct frame_entry* frame_get_page (enum palloc_flags flags) 
 {
     ASSERT (flags & PAL_USER);
     void* kpage;
     kpage = palloc_get_page(flags);
-    printf("frame_get_page %p\n", kpage);
     if (kpage) {
         lock_acquire(&frame_lock);
         struct frame_entry *fe;
@@ -31,7 +30,7 @@ void* frame_get_page (enum palloc_flags flags)
         fe->LRU = 0;
         list_push_back (&frame_table, &fe->elem);
         lock_release(&frame_lock);
-        return kpage;
+        return fe;
     } else {
         PANIC("eviction requirement");
     }

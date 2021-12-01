@@ -122,7 +122,7 @@ syscall_handler (struct intr_frame *f)
         break;
       }
       thread_current()->fd_table[fd] = filesys_open(name);
-      
+      //printf("open with file : %p\n", thread_current()->fd_table[fd]);
       // int k;
       // k = 1;
       // do {
@@ -267,8 +267,16 @@ syscall_handler (struct intr_frame *f)
       fd = *(int *)(f->esp + 4);
       syscall_check_vaddr(f->esp + 8);
       addr = *(void **)(f->esp + 8);
-      if ((int)addr & 0x00000FFF)
-        PANIC("mmap addr not page aligned");
+      //printf("mmap with fd : %d, addr : %p\n", fd, addr);
+      if (addr == NULL) {
+        (f->eax) = -1;
+        break;
+      }
+      if ((int)addr & 0x00000FFF) {
+        (f->eax) = -1;
+        break;
+      }
+        
       off_t length;
       struct file* file;
       off_t ofs;
@@ -280,6 +288,7 @@ syscall_handler (struct intr_frame *f)
         break;
       }
       length = file_length(file);
+      printf("file : %p, length : %d\n", file, length);
       if (length == 0) {
         (f->eax) = -1;
         break;
@@ -294,6 +303,7 @@ syscall_handler (struct intr_frame *f)
           page_read_bytes = length;
           page_zero_bytes = PGSIZE - length;
         }
+        //printf("mmap u : %p\n", addr + ofs);
         spt_add_entry(&thread_current()->spt, addr + ofs, page_read_bytes, page_zero_bytes, file, true, ofs, false);
         length -= PGSIZE;
         ofs += PGSIZE;
@@ -310,32 +320,32 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_MUNMAP:
     {
-      printf("start munmap\n");
+      //printf("start munmap\n");
       int mapid;
       syscall_check_vaddr(f->esp + 4);
       mapid = *(int *)(f->esp + 4);
-      printf("munmap get mapid\n");
+      //printf("munmap get mapid\n");
       struct list_elem *e;
       for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
         struct mmap_entry *me;
         me = list_entry (e, struct mmap_entry, elem);
-        printf("munmap get list_entry\n");
+        //printf("munmap get list_entry\n");
         if (me->mapid == mapid) {
-          printf("find mapid\n");
-          printf("upage : %p\n", me->upage);
+          //printf("find mapid\n");
+          //printf("upage : %p\n", me->upage);
           spt_lookup(&thread_current()->spt, me->upage);
-          printf("spt_lookup\n");
+          //printf("spt_lookup\n");
           if (spt_lookup(&thread_current()->spt, me->upage) == NULL) {
-            printf("spt lookup NULL\n");
-            frame_free_page (me->upage);
+            //printf("spt lookup NULL\n");
+            spt_free (&thread_current()->spt, me->upage);
           } else {
-            printf("spt lookup exist\n");
+            //printf("spt lookup exist\n");
             spt_remove_entry (&thread_current()->spt, me->upage);
           }
         }
-        printf("unfind mapid\n");
+        //printf("unfind mapid\n");
       }
-      printf("finish munmap\n");
+      //printf("finish munmap\n");
       break;
     }
   }

@@ -31,15 +31,39 @@ void spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     se->tid = thread_tid();
     se->avail_swap = false;
     se->upage = upage;
+    se->fe = NULL;
     se->page_read_bytes = page_read_bytes;
     se->page_zero_bytes = page_zero_bytes;
     se->file = file;
+    se->is_alloc = false;
     se->writable = writable;
     se->ofs = ofs;
     se->is_zero_page = is_zero_page;
     struct hash_elem* he;
     he = hash_insert (spt, &se->elem);
     ASSERT (he == NULL);
+}
+
+void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {
+
+    struct spt_entry* se;
+    se = spt_lookup (spt, upage);
+    if (se == NULL) {
+        PANIC ("spt alloc no upage");
+    }
+    se->fe = frame_get_page (flags);
+
+    se->is_alloc = true;
+    return se->fe->kpage;
+}
+
+void spt_free (struct hash* spt, void* upage) {
+    struct spt_entry* se;
+    se = spt_lookup (spt, upage);
+    if (se == NULL) PANIC ("spt_free se == NULL");
+    if (se->fe == NULL) PANIC ("spt_free se->fe == NULL");
+    if (se->fe->kpage == NULL) PANIC ("spt_free se->fe->kpage == NULL");
+    frame_free_page(se->fe->kpage);
 }
 
 struct spt_entry* spt_lookup (struct hash* spt, void* upage) {

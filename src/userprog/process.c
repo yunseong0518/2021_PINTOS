@@ -663,7 +663,7 @@ setup_stack (void **esp)
   uint8_t *kpage;
   
   bool success = false;
-  kpage = frame_get_page (PAL_USER | PAL_ZERO);
+  kpage = frame_get_page (PAL_USER | PAL_ZERO)->kpage;
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -674,7 +674,6 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
-  
   return success;
 }
 

@@ -20,7 +20,7 @@ struct list frame_table;
 struct lock frame_lock;
 
 void frame_init (void);
-void* frame_get_page (enum palloc_flags flags);
+struct frame_entry* frame_get_page (enum palloc_flags flags);
 void frame_free_page (void *kpage);
 
 #endif // VM_FRAME_H
