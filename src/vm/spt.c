@@ -57,6 +57,13 @@ void spt_destroy (struct hash* spt) {
     hash_destroy (spt, NULL);
 }
 
-void spt_remove_entry () {
+void spt_remove_entry (struct hash* spt, void* upage) {
+    struct spt_entry* se;
+    se = spt_lookup(spt, upage);
+    if (se == NULL) {
+        PANIC ("spt no remove entry");
+    } else {
+        hash_delete (spt, &se->elem);
+    }
     // do it later
 }

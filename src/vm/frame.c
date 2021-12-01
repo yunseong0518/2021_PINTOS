@@ -19,6 +19,7 @@ void* frame_get_page (enum palloc_flags flags)
     ASSERT (flags & PAL_USER);
     void* kpage;
     kpage = palloc_get_page(flags);
+    printf("frame_get_page %p\n", kpage);
     if (kpage) {
         lock_acquire(&frame_lock);
         struct frame_entry *fe;

@@ -174,11 +174,13 @@ page_fault (struct intr_frame *f)
       {
          PANIC ("file read panic");
          frame_free_page (kpage);
+         spt_remove_entry (&thread_current()->spt, upage);
          return;
       }
       memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
-
+      printf("lazy loading k : %p, u : %p\n", kpage, upage);
       install_page (upage, kpage, se->writable);
+      spt_remove_entry (&thread_current()->spt, upage);
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
