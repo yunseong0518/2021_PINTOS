@@ -181,16 +181,21 @@ page_fault (struct intr_frame *f)
       install_page (upage, kpage, se->writable);
       return;
    }
-   else if (!user || is_kernel_vaddr(fault_addr)) {
+   else if (is_kernel_vaddr(fault_addr)) {
       syscall_exit(-1);
    }
    // printf("upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
-   if (fault_addr > f->esp) {
-      uint8_t *kpage = frame_get_page (PAL_USER | PAL_ZERO);
-      install_page (upage, kpage, true);
-      return;
-   } else if (not_present) {
+   else if (!user) {
       syscall_exit(-1);
+   } else if (not_present) {
+      if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
+         // stack growth
+         uint8_t *kpage = frame_get_page (PAL_USER | PAL_ZERO);
+         install_page (upage, kpage, true);
+         return;
+      } else {
+         syscall_exit(-1);
+      }
    }
    
 
