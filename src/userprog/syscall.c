@@ -55,7 +55,7 @@ void syscall_munmap (int mapid) {
       //printf("spt_lookup\n");
       if (me->dirty == true) {
         file_write_at(me->file, me->upage + i * PGSIZE, se->page_read_bytes, se->ofs);
-    }
+      }
     }
 
     spt_remove_entry(&thread_current()->spt, me->upage);
@@ -90,7 +90,9 @@ syscall_handler (struct intr_frame *f)
       tid_t tid;
       syscall_check_vaddr(f->esp + 4);
       file_name = *(char **)(f->esp + 4);
+      lock_acquire(&filesys_lock);
       f->eax = process_execute(file_name);
+      lock_release(&filesys_lock);
       break;
     }
     case SYS_WAIT:
@@ -110,7 +112,11 @@ syscall_handler (struct intr_frame *f)
       syscall_check_vaddr(f->esp + 8);
       size = *(unsigned *)(f->esp + 8);
       if(name == NULL) syscall_exit(-1); 
-      else (f->eax) = filesys_create(name, size);
+      else {
+        lock_acquire(&filesys_lock);
+        (f->eax) = filesys_create(name, size);
+        lock_release(&filesys_lock);
+      }
       break;
     }
     case SYS_REMOVE:
@@ -142,9 +148,10 @@ syscall_handler (struct intr_frame *f)
         break;
       }
       struct file* file;
-      //lock_acquire(&filesys_lock);
+      lock_acquire(&filesys_lock);
       file = filesys_open(name);
-      //lock_release(&filesys_lock);
+      lock_release(&filesys_lock);
+
 
       thread_current()->fd_table[fd] = file;
       //printf("open with file : %p\n", thread_current()->fd_table[fd]);
@@ -193,6 +200,7 @@ syscall_handler (struct intr_frame *f)
       length = *(int *)(f->esp + 12);
       struct file* fi;
       fi = thread_current()->fd_table[fd];
+      //printf("sys_read fd : %d, file : %p\n", fd, fi);
       if (fi == NULL) {
         syscall_exit(-1);
       }
@@ -208,13 +216,13 @@ syscall_handler (struct intr_frame *f)
           lock_acquire(&filesys_lock);
           (f->eax) = file_read(fi, buf, length);
           lock_release(&filesys_lock);
+          //printf("sys_read complete %d\n", f->eax);
         }
       }
       break;
     }
     case SYS_WRITE:
     {
-      lock_acquire(&filesys_lock);
       int fd;
       syscall_check_vaddr(f->esp + 4);
       fd = (int)*(int *)(f->esp + 4);
@@ -239,11 +247,12 @@ syscall_handler (struct intr_frame *f)
           //  file_deny_write(fi);
           //}
           // printf("\ttry file_write in SYS_WRITE in %s\n", thread_current()->name);
+          lock_acquire(&filesys_lock);
           (f->eax) = file_write(fi, buffer, size);
+          lock_release(&filesys_lock);
           // printf("\tfinish file_write in SYS_WRITE in %s\n", thread_current()->name);
         }
       }
-      lock_release(&filesys_lock);
       break;
     }
     case SYS_SEEK:

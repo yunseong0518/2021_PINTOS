@@ -168,6 +168,9 @@ page_fault (struct intr_frame *f)
    struct spt_entry* se;
    se = spt_lookup (&thread_current()->spt, upage);
 
+   //if (se != NULL)
+      //printf("page_fault : u : %p, write : %d, writable : %d\n", upage, write, se->writable);
+
    struct list_elem *e;
    struct mmap_entry *me;
    bool find_me;
@@ -183,14 +186,19 @@ page_fault (struct intr_frame *f)
       if (find_me)
          break;
    }
-   if (find_me == true && se->writable == false) {
+
+   if (se != NULL && find_me == true && se->writable == false) {
       if (write) {
          me->dirty = true;
          se->writable = true;
          return;
       }
    }
+   else if (se != NULL && se->writable == false && write == true) {
+      syscall_exit(-1);
+   }
 
+   //printf("page fault addr : %p, u : %p\n", fault_addr, upage);
    if (se != NULL && se->is_alloc == false) {
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
       //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
@@ -215,24 +223,36 @@ page_fault (struct intr_frame *f)
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
+      //printf("not user vaddr\n");
       syscall_exit(-1);
    }
-   else if (!user) {
+   if (!user) {
       syscall_exit(-1);
-   } else if (not_present) {
+   }
+   if (not_present) {
       if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
          // stack growth
-         // printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
-         if(spt_add_entry (&thread_current()->spt, upage, 0, PGSIZE, NULL, true, 0, true) == false) {
-            printf("stack growth false\n");
+         //printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
+         void* upage_tmp;
+         upage_tmp = PHYS_BASE - PGSIZE;
+         while(upage_tmp >= pg_round_down(fault_addr)) {
+            //printf("stack upage_tmp : %p, esp : %p\n", upage_tmp, f->esp);
+            if (spt_lookup(&thread_current()->spt, upage_tmp) == NULL) {
+               //printf("stack growth add %p\n", upage_tmp);
+               spt_add_entry (&thread_current()->spt, upage_tmp, 0, PGSIZE, NULL, true, 0, true);
+               uint8_t *kpage = spt_alloc (&thread_current()->spt, upage_tmp, PAL_USER | PAL_ZERO);
+               install_page (upage_tmp, kpage, true);
+            }
+            upage_tmp -= PGSIZE;
          }
-         uint8_t *kpage = spt_alloc (&thread_current()->spt, upage, PAL_USER | PAL_ZERO);
-         install_page (upage, kpage, true);
+      
          return;
       } else {
+         //printf("not present not stack\n");
          syscall_exit(-1);
       }
    }
+   
    
 
   /* To implement virtual memory, delete the rest of the function
