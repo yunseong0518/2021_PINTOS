@@ -35,7 +35,7 @@ bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     se->page_read_bytes = page_read_bytes;
     se->page_zero_bytes = page_zero_bytes;
     se->file = file;
-    se->is_alloc = false;
+    se->is_alloc = true;
     se->writable = writable;
     se->ofs = ofs;
     se->is_zero_page = is_zero_page;
@@ -59,6 +59,13 @@ void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {
 
     se->is_alloc = true;
     return se->fe->kpage;
+}
+
+void spt_dealloc (struct hash* spt, void* upage) {
+    struct spt_entry* se;
+    se = spt_lookup (spt, upage);
+    if (se == NULL) PANIC ("spt_free se == NULL");
+    se->is_alloc = false;
 }
 
 void spt_free (struct hash* spt, void* upage) {

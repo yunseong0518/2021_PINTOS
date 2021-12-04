@@ -359,6 +359,7 @@ syscall_handler (struct intr_frame *f)
       se = spt_lookup(&thread_current()->spt, me->upage);
       ASSERT(se != NULL);
       //printf("spt_lookup\n");
+      spt_dealloc(&thread_current()->spt, me->upage);
       file_close (se->file);
       list_remove(&me->elem);
       //printf("finish munmap\n");

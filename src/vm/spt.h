@@ -31,6 +31,7 @@ bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
 void spt_destroy (struct hash* spt);
 struct spt_entry* spt_lookup (struct hash* spt, void* upage);
 void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags);
+void spt_dealloc (struct hash* spt, void* upage);
 void spt_free (struct hash* spt, void* upage);
 void spt_remove_entry (struct hash* spt, void* upage);
 

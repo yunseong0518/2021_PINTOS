@@ -675,6 +675,7 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
+
     spt_add_entry (&thread_current()->spt,((uint8_t *) PHYS_BASE) - PGSIZE, 0, PGSIZE, NULL, true, 0, true);
 
   return success;
