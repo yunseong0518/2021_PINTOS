@@ -24,7 +24,7 @@ void spt_init (struct hash* spt) {
     hash_init (spt, spt_hash_func, spt_less_func, NULL);
 }
 
-void spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page) {
+bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page) {
     struct spt_entry* se;
     se = malloc (sizeof(struct spt_entry));
     ASSERT (se);
@@ -41,7 +41,11 @@ void spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     se->is_zero_page = is_zero_page;
     struct hash_elem* he;
     he = hash_insert (spt, &se->elem);
-    ASSERT (he == NULL);
+    if (he != NULL) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {

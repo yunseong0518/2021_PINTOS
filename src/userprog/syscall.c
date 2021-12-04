@@ -9,6 +9,7 @@
 #include "filesys/file.h"
 #include "filesys/filesys.h"
 #include "devices/input.h"
+#include "vm/spt.h"
 #include "threads/vaddr.h"
 #include <list.h>
 
@@ -22,6 +23,8 @@ struct mmap_entry
   int mapid;
   tid_t tid;
   void* upage;
+  bool dirty;
+  struct file* file;
 };
 
 struct list mmap_table;
@@ -102,7 +105,6 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_OPEN:
     {
-      lock_acquire(&filesys_lock);
       char *name;
       syscall_check_vaddr(f->esp + 4);
       name = *(char **)(f->esp + 4);
@@ -118,10 +120,14 @@ syscall_handler (struct intr_frame *f)
       }
       if (fd == -1) {
         f->eax = -1;
-        lock_release(&filesys_lock);
         break;
       }
-      thread_current()->fd_table[fd] = filesys_open(name);
+      struct file* file;
+      //lock_acquire(&filesys_lock);
+      file = filesys_open(name);
+      //lock_release(&filesys_lock);
+
+      thread_current()->fd_table[fd] = file;
       //printf("open with file : %p\n", thread_current()->fd_table[fd]);
       // int k;
       // k = 1;
@@ -137,7 +143,8 @@ syscall_handler (struct intr_frame *f)
       else {
         f->eax = fd;
       }
-      lock_release(&filesys_lock);
+
+      //lock_release(&filesys_lock);
       break;
     }
     case SYS_FILESIZE: 
@@ -155,7 +162,6 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_READ:
     {
-      lock_acquire(&filesys_lock);
       int fd;
       syscall_check_vaddr(f->esp + 4);
       fd = *(int *)(f->esp + 4);
@@ -181,10 +187,11 @@ syscall_handler (struct intr_frame *f)
           (f->eax) = i;
         }
         else {
+          lock_acquire(&filesys_lock);
           (f->eax) = file_read(fi, buf, length);
+          lock_release(&filesys_lock);
         }
       }
-      lock_release(&filesys_lock);
       break;
     }
     case SYS_WRITE:
@@ -283,16 +290,23 @@ syscall_handler (struct intr_frame *f)
       ofs = 0;
       lock_acquire(&filesys_lock);
       file = thread_current()->fd_table[fd];
+      struct file* file_re;
       if (file == NULL) {
+        lock_release(&filesys_lock);
         (f->eax) = -1;
         break;
       }
       length = file_length(file);
-      printf("file : %p, length : %d\n", file, length);
+      file_re = file_reopen(file);
+
+
+      lock_release(&filesys_lock);
       if (length == 0) {
         (f->eax) = -1;
         break;
       }
+      bool spt_success;
+      spt_success = true;
       while (length > 0) {
         int page_read_bytes;
         int page_zero_bytes;
@@ -304,16 +318,21 @@ syscall_handler (struct intr_frame *f)
           page_zero_bytes = PGSIZE - length;
         }
         //printf("mmap u : %p\n", addr + ofs);
-        spt_add_entry(&thread_current()->spt, addr + ofs, page_read_bytes, page_zero_bytes, file, true, ofs, false);
+        spt_success &= spt_add_entry(&thread_current()->spt, addr + ofs, page_read_bytes, page_zero_bytes, file_re, true, ofs, false);
         length -= PGSIZE;
         ofs += PGSIZE;
       }
-      lock_release(&filesys_lock);
+      if (spt_success == false) {
+        (f->eax) = -1;
+        break;
+      }
       struct mmap_entry *me;
       me = malloc(sizeof(struct mmap_entry));
       me->tid = thread_current()->tid;
       me->mapid = mapid_count++;
       me->upage = addr;
+      me->file = file_re;
+      me->dirty = false;
       list_push_back(&mmap_table, &me->elem);
       (f->eax) = me->mapid;
       break;
@@ -326,25 +345,31 @@ syscall_handler (struct intr_frame *f)
       mapid = *(int *)(f->esp + 4);
       //printf("munmap get mapid\n");
       struct list_elem *e;
+      struct mmap_entry *me;
       for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
-        struct mmap_entry *me;
         me = list_entry (e, struct mmap_entry, elem);
         //printf("munmap get list_entry\n");
         if (me->mapid == mapid) {
-          //printf("find mapid\n");
-          //printf("upage : %p\n", me->upage);
-          spt_lookup(&thread_current()->spt, me->upage);
-          //printf("spt_lookup\n");
-          if (spt_lookup(&thread_current()->spt, me->upage) == NULL) {
-            //printf("spt lookup NULL\n");
-            spt_free (&thread_current()->spt, me->upage);
-          } else {
-            //printf("spt lookup exist\n");
-            spt_remove_entry (&thread_current()->spt, me->upage);
-          }
+          break;
         }
         //printf("unfind mapid\n");
       }
+          //printf("find mapid\n");
+          //printf("upage : %p\n", me->upage);
+      struct spt_entry* se;
+      se = spt_lookup(&thread_current()->spt, me->upage);
+      ASSERT(se != NULL);
+      //printf("spt_lookup\n");
+      file_close (se->file);
+      if (se->is_alloc == true) {
+        //printf("spt lookup NULL\n");
+        spt_free (&thread_current()->spt, me->upage);
+        spt_remove_entry (&thread_current()->spt, me->upage);
+      } else {
+        //printf("spt lookup exist\n");
+        spt_remove_entry (&thread_current()->spt, me->upage);
+      }
+      list_remove(&me->elem);
       //printf("finish munmap\n");
       break;
     }

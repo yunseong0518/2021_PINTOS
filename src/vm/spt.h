@@ -27,7 +27,7 @@ struct spt_entry
 };
 
 void spt_init (struct hash* spt);
-void spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page);
+bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page);
 void spt_destroy (struct hash* spt);
 struct spt_entry* spt_lookup (struct hash* spt, void* upage);
 void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags);

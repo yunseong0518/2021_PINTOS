@@ -169,12 +169,12 @@ page_fault (struct intr_frame *f)
    se = spt_lookup (&thread_current()->spt, upage);
    if (se != NULL) {
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
-      printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
+      //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
       if (se->file != NULL) {
          int fra;
-         printf("ofs : %d, file : %p\n", se->ofs, se->file);
+         //printf("ofs : %d, file : %p\n", se->ofs, se->file);
          fra = file_read_at (se->file, kpage, se->page_read_bytes, se->ofs);
-         printf("file read at : %d\n", fra);
+         //printf("file read at : %d\n", fra);
          if (fra != se->page_read_bytes)
          {
             PANIC ("file read panic");
