@@ -187,10 +187,15 @@ page_fault (struct intr_frame *f)
          break;
    }
 
+   //printf("page fault addr : %p, u : %p, tid : %d, write : %d\n", fault_addr, upage, thread_tid(), write);
    if (se != NULL && find_me == true && se->writable == false) {
       if (write) {
          me->dirty = true;
          se->writable = true;
+         if (se->fe != NULL) {
+            pagedir_clear_page(thread_current()->pagedir, se->upage);
+            install_page (se->upage, se->fe->kpage, se->writable);
+         }
          return;
       }
    }
@@ -198,7 +203,6 @@ page_fault (struct intr_frame *f)
       syscall_exit(-1);
    }
 
-   //printf("page fault addr : %p, u : %p\n", fault_addr, upage);
    if (se != NULL && se->is_alloc == false) {
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
       //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);

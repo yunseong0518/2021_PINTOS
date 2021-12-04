@@ -93,6 +93,7 @@ syscall_handler (struct intr_frame *f)
       lock_acquire(&filesys_lock);
       f->eax = process_execute(file_name);
       lock_release(&filesys_lock);
+      //printf("sys execute fin %s, %d\n", file_name, f->eax);
       break;
     }
     case SYS_WAIT:
@@ -301,7 +302,7 @@ syscall_handler (struct intr_frame *f)
       fd = *(int *)(f->esp + 4);
       syscall_check_vaddr(f->esp + 8);
       addr = *(void **)(f->esp + 8);
-      //printf("mmap with fd : %d, addr : %p\n", fd, addr);
+      //printf("mmap with fd : %d, addr : %p, tid : %d\n", fd, addr, thread_tid());
       if (addr == NULL) {
         (f->eax) = -1;
         break;

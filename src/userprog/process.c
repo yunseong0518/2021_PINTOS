@@ -251,11 +251,11 @@ process_wait (tid_t child_tid)
   for (e = list_begin(&cur->child_list); e != list_end(&cur->child_list); e = list_next(e)) {
     t = list_entry(e, struct thread, child_elem);
     if (t->tid == child_tid) {
-      // printf("before exit sema down %d, %s\n", cur->tid, cur->name);
+      //printf("before exit sema down %d, %s\n", cur->tid, cur->name);
       sema_down(&t->exit_sema);
-      // printf("after exit sema down %d, %s\n", cur->tid, cur->name);
+      //printf("after exit sema down %d, %s\n", cur->tid, cur->name);
       status = t->exit_status;
-      // printf("exit_status : %d, %s\n", status, cur->name);
+      //printf("exit_status : %d, %s\n", status, cur->name);
       list_remove(&t->child_elem);
       sema_up(&t->mem_sema);
       return status;
