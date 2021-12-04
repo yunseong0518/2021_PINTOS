@@ -175,7 +175,6 @@ syscall_handler (struct intr_frame *f)
       struct file* fi;
       fi = thread_current()->fd_table[fd];
       if (fi == NULL) {
-        lock_release(&filesys_lock);
         syscall_exit(-1);
       }
       else {
@@ -361,14 +360,6 @@ syscall_handler (struct intr_frame *f)
       ASSERT(se != NULL);
       //printf("spt_lookup\n");
       file_close (se->file);
-      if (se->is_alloc == true) {
-        //printf("spt lookup NULL\n");
-        spt_free (&thread_current()->spt, me->upage);
-        spt_remove_entry (&thread_current()->spt, me->upage);
-      } else {
-        //printf("spt lookup exist\n");
-        spt_remove_entry (&thread_current()->spt, me->upage);
-      }
       list_remove(&me->elem);
       //printf("finish munmap\n");
       break;

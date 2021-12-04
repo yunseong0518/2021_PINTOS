@@ -188,13 +188,15 @@ page_fault (struct intr_frame *f)
    else if (is_kernel_vaddr(fault_addr)) {
       syscall_exit(-1);
    }
-   // printf("upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
    else if (!user) {
       syscall_exit(-1);
    } else if (not_present) {
       if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
          // stack growth
-         spt_add_entry (&thread_current()->spt, upage, 0, PGSIZE, NULL, true, 0, true);
+         // printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
+         if(spt_add_entry (&thread_current()->spt, upage, 0, PGSIZE, NULL, true, 0, true) == false) {
+            printf("stack growth false\n");
+         }
          uint8_t *kpage = spt_alloc (&thread_current()->spt, upage, PAL_USER | PAL_ZERO);
          install_page (upage, kpage, true);
          return;

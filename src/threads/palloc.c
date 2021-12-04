@@ -97,6 +97,8 @@ palloc_get_multiple (enum palloc_flags flags, size_t page_cnt)
         PANIC ("palloc_get: out of pages");
     }
 
+  //printf("\tpalloc_get page_idx : %d, page_cnt : %d\n", page_idx, page_cnt);
+  //printf("\tpage : %p\n", pages);
   return pages;
 }
 
@@ -112,7 +114,10 @@ palloc_get_page (enum palloc_flags flags)
 {
   return palloc_get_multiple (flags, 1);
 }
-
+#define _ASSERT(CONDITION, ...)                                       \
+        if (CONDITION) { } else {                               \
+                PANIC (__VA_ARGS__);   \
+        }
 /* Frees the PAGE_CNT pages starting at PAGES. */
 void
 palloc_free_multiple (void *pages, size_t page_cnt) 
@@ -138,6 +143,9 @@ palloc_free_multiple (void *pages, size_t page_cnt)
 #endif
 
   ASSERT (bitmap_all (pool->used_map, page_idx, page_cnt));
+  //_ASSERT (bitmap_all (pool->used_map, page_idx, page_cnt), "\tpalloc_free page_idx : %d, page_cnt : %d, page : %p\n", page_idx, page_cnt, pages);
+  //printf("\tpalloc_free page_idx : %d, page_cnt : %d\n", page_idx, page_cnt);
+  //printf("\tpage : %p\n", pages);
   bitmap_set_multiple (pool->used_map, page_idx, page_cnt, false);
 }
 
