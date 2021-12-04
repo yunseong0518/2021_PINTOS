@@ -183,6 +183,14 @@ page_fault (struct intr_frame *f)
       }
       memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
       install_page (upage, kpage, se->writable);
+      struct list_elem* e;
+      for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
+         struct mmap_entry *me;
+         me = list_entry(e, struct mmap_entry, elem);
+         if (me->upage == upage) {
+            me->dirty = true;
+         }
+      }
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {

@@ -17,18 +17,6 @@ static void syscall_handler (struct intr_frame *);
 
 static int mapid_count;
 
-struct mmap_entry
-{
-  struct list_elem elem;
-  int mapid;
-  tid_t tid;
-  void* upage;
-  bool dirty;
-  struct file* file;
-};
-
-struct list mmap_table;
-
 void
 syscall_init (void) 
 {
@@ -42,6 +30,34 @@ void syscall_exit(int status) {
     thread_current()->exit_status = status;
     printf("%s: exit(%d)\n", thread_current()->name, status);
     thread_exit();
+}
+
+void syscall_munmap (int mapid) {
+  struct list_elem *e;
+  struct mmap_entry *me;
+  bool find_me;
+  //do {
+    find_me = false;
+    for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
+      me = list_entry (e, struct mmap_entry, elem);
+      //printf("munmap get list_entry\n");
+      if (me->mapid == mapid) {
+        find_me = true;
+        break;
+      }
+      //printf("unfind mapid\n");
+    }
+    struct spt_entry* se;
+    se = spt_lookup(&thread_current()->spt, me->upage);
+    ASSERT(se != NULL);
+    //printf("spt_lookup\n");
+    if (me->dirty == true) {
+      file_write_at(me->file, me->upage, se->page_read_bytes, se->ofs);
+    }
+
+    spt_remove_entry(&thread_current()->spt, me->upage);
+    file_close (se->file);
+    list_remove(&me->elem);
 }
 
 void syscall_check_vaddr(const void *vaddr) {
@@ -350,27 +366,7 @@ syscall_handler (struct intr_frame *f)
       syscall_check_vaddr(f->esp + 4);
       mapid = *(int *)(f->esp + 4);
       //printf("munmap get mapid\n");
-      struct list_elem *e;
-      struct mmap_entry *me;
-      bool find_me;
-      //do {
-        find_me = false;
-        for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
-          me = list_entry (e, struct mmap_entry, elem);
-          //printf("munmap get list_entry\n");
-          if (me->mapid == mapid) {
-            find_me = true;
-            break;
-          }
-          //printf("unfind mapid\n");
-        }
-        struct spt_entry* se;
-        se = spt_lookup(&thread_current()->spt, me->upage);
-        ASSERT(se != NULL);
-        //printf("spt_lookup\n");
-        spt_remove_entry(&thread_current()->spt, me->upage);
-        file_close (se->file);
-        list_remove(&me->elem);
+      syscall_munmap(mapid);
       //} while (find_me);
           //printf("find mapid\n");
           //printf("upage : %p\n", me->upage);

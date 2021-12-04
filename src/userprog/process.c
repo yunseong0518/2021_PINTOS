@@ -286,6 +286,13 @@ process_exit (void)
       file_close(cur->fd_table[i]);
     cur->fd_table[i] = NULL;
   }
+  for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
+    struct mmap_entry* me;
+    me = list_entry(e, struct mmap_entry, elem);
+    if (me->tid == thread_tid()) {
+      syscall_munmap(me->mapid);
+    }
+  }
 
     file_close(cur->running_file);
     // printf("finish file_close in %s\n", cur->name);
