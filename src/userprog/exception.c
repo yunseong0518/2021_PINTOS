@@ -167,7 +167,7 @@ page_fault (struct intr_frame *f)
    upage = pg_round_down (fault_addr);
    struct spt_entry* se;
    se = spt_lookup (&thread_current()->spt, upage);
-   if (se != NULL && se->is_alloc) {
+   if (se != NULL && se->is_alloc == false) {
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
       //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
       if (se->file != NULL) {

@@ -322,6 +322,13 @@ syscall_handler (struct intr_frame *f)
         ofs += PGSIZE;
       }
       if (spt_success == false) {
+        length = file_length(file);
+        ofs = 0;
+        while(length > 0) {
+          spt_dealloc(&thread_current()->spt, addr + ofs);
+          ofs += PGSIZE;
+          length -= PGSIZE;
+        }
         (f->eax) = -1;
         break;
       }
@@ -345,23 +352,28 @@ syscall_handler (struct intr_frame *f)
       //printf("munmap get mapid\n");
       struct list_elem *e;
       struct mmap_entry *me;
-      for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
-        me = list_entry (e, struct mmap_entry, elem);
-        //printf("munmap get list_entry\n");
-        if (me->mapid == mapid) {
-          break;
+      bool find_me;
+      //do {
+        find_me = false;
+        for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
+          me = list_entry (e, struct mmap_entry, elem);
+          //printf("munmap get list_entry\n");
+          if (me->mapid == mapid) {
+            find_me = true;
+            break;
+          }
+          //printf("unfind mapid\n");
         }
-        //printf("unfind mapid\n");
-      }
+        struct spt_entry* se;
+        se = spt_lookup(&thread_current()->spt, me->upage);
+        ASSERT(se != NULL);
+        //printf("spt_lookup\n");
+        spt_remove_entry(&thread_current()->spt, me->upage);
+        file_close (se->file);
+        list_remove(&me->elem);
+      //} while (find_me);
           //printf("find mapid\n");
           //printf("upage : %p\n", me->upage);
-      struct spt_entry* se;
-      se = spt_lookup(&thread_current()->spt, me->upage);
-      ASSERT(se != NULL);
-      //printf("spt_lookup\n");
-      spt_dealloc(&thread_current()->spt, me->upage);
-      file_close (se->file);
-      list_remove(&me->elem);
       //printf("finish munmap\n");
       break;
     }

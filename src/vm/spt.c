@@ -35,7 +35,7 @@ bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     se->page_read_bytes = page_read_bytes;
     se->page_zero_bytes = page_zero_bytes;
     se->file = file;
-    se->is_alloc = true;
+    se->is_alloc = false;
     se->writable = writable;
     se->ofs = ofs;
     se->is_zero_page = is_zero_page;
