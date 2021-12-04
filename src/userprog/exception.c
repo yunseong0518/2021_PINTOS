@@ -167,6 +167,30 @@ page_fault (struct intr_frame *f)
    upage = pg_round_down (fault_addr);
    struct spt_entry* se;
    se = spt_lookup (&thread_current()->spt, upage);
+
+   struct list_elem *e;
+   struct mmap_entry *me;
+   bool find_me;
+   find_me = false;
+   int pc;
+   for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
+      me = list_entry (e, struct mmap_entry, elem);
+      for (pc = 0; pc < me->page_cnt; pc++) {
+         if (me->upage + pc * PGSIZE == upage) {
+            find_me = true;
+         }
+      }
+      if (find_me)
+         break;
+   }
+   if (find_me == true && se->writable == false) {
+      if (write) {
+         me->dirty = true;
+         se->writable = true;
+         return;
+      }
+   }
+
    if (se != NULL && se->is_alloc == false) {
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
       //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
@@ -187,9 +211,6 @@ page_fault (struct intr_frame *f)
       for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
          struct mmap_entry *me;
          me = list_entry(e, struct mmap_entry, elem);
-         if (me->upage == upage) {
-            me->dirty = true;
-         }
       }
       return;
    }

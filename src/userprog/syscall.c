@@ -48,11 +48,14 @@ void syscall_munmap (int mapid) {
       //printf("unfind mapid\n");
     }
     struct spt_entry* se;
-    se = spt_lookup(&thread_current()->spt, me->upage);
-    ASSERT(se != NULL);
-    //printf("spt_lookup\n");
-    if (me->dirty == true) {
-      file_write_at(me->file, me->upage, se->page_read_bytes, se->ofs);
+    int i;
+    for (i = 0; i < me->page_cnt; i++) {
+      se = spt_lookup(&thread_current()->spt, me->upage + i * PGSIZE);
+      ASSERT(se != NULL);
+      //printf("spt_lookup\n");
+      if (me->dirty == true) {
+        file_write_at(me->file, me->upage + i * PGSIZE, se->page_read_bytes, se->ofs);
+    }
     }
 
     spt_remove_entry(&thread_current()->spt, me->upage);
@@ -322,6 +325,8 @@ syscall_handler (struct intr_frame *f)
       }
       bool spt_success;
       spt_success = true;
+      int page_cnt;
+      page_cnt = 0;
       while (length > 0) {
         int page_read_bytes;
         int page_zero_bytes;
@@ -333,9 +338,10 @@ syscall_handler (struct intr_frame *f)
           page_zero_bytes = PGSIZE - length;
         }
         //printf("mmap u : %p\n", addr + ofs);
-        spt_success &= spt_add_entry(&thread_current()->spt, addr + ofs, page_read_bytes, page_zero_bytes, file_re, true, ofs, false);
+        spt_success &= spt_add_entry(&thread_current()->spt, addr + ofs, page_read_bytes, page_zero_bytes, file_re, false, ofs, false);
         length -= PGSIZE;
         ofs += PGSIZE;
+        page_cnt++;
       }
       if (spt_success == false) {
         length = file_length(file);
@@ -355,6 +361,7 @@ syscall_handler (struct intr_frame *f)
       me->upage = addr;
       me->file = file_re;
       me->dirty = false;
+      me->page_cnt = page_cnt;
       list_push_back(&mmap_table, &me->elem);
       (f->eax) = me->mapid;
       break;

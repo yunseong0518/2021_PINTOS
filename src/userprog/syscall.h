@@ -21,6 +21,7 @@ struct mmap_entry
   void* upage;
   bool dirty;
   struct file* file;
+  int page_cnt;
 };
 
 struct lock filesys_lock;
