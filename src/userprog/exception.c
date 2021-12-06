@@ -188,8 +188,10 @@ page_fault (struct intr_frame *f)
          break;
    }
 
-   printf("================================================================\n");
-   printf("page fault addr : %p, u : %p, tid : %d, write : %d\n", fault_addr, upage, thread_tid(), write);
+   void* esp;
+   esp = f->esp;
+   //printf("================================================================\n");
+   //printf("page fault addr : %p, u : %p, tid : %d, write : %d, wa : %d, esp : %p\n", fault_addr, upage, thread_tid(), write, se->writable, f->esp);
    if (se != NULL && find_me == true && se->writable == false) {
       if (write) {
          me->dirty = true;
@@ -203,7 +205,7 @@ page_fault (struct intr_frame *f)
          return;
       }
    }
-   else if (se != NULL && se->writable == false && write == true) {
+   if (se != NULL && se->writable == false && write == true) {
       printf("writable issue\n");
       syscall_exit(-1);
    }
@@ -213,7 +215,7 @@ page_fault (struct intr_frame *f)
 
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
 
-      printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
+      //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
       swap_e = swap_find(upage);
       if (swap_e != NULL) {
          swap_in(&thread_current()->spt, kpage, upage);

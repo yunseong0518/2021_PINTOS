@@ -55,11 +55,42 @@ void swap_in(struct hash* spt, void* kpage, void* upage) {
     //void* kpage;
     //spt_add_entry(spt, upage, PGSIZE, 0, file, true, 0, false);
     //kpage = spt_alloc(spt, upage, PAL_USER);
+    struct thread* t;
+    t = thread_current();
+    pagedir_clear_page(t->pagedir, upage);
+    pagedir_get_page (t->pagedir, upage);
+    pagedir_set_page (t->pagedir, upage, kpage, true);
     for (i = 0; i < pg_per_block; i++) {
-        printf("\t\tblock_read idx : %d\n", se->idx * pg_per_block + i);
-        block_read(swap_device, se->idx * pg_per_block + i, kpage + i * BLOCK_SECTOR_SIZE);
+        block_read(swap_device, se->idx * pg_per_block + i, upage + i * BLOCK_SECTOR_SIZE);
+        printf("\t\tblock read %d : %x\n", se->idx * pg_per_block + i, *(int *)(upage + i * BLOCK_SECTOR_SIZE));
     }
+    pagedir_clear_page(t->pagedir, upage);
+    pagedir_get_page (t->pagedir, upage);
+    pagedir_set_page (t->pagedir, upage, kpage, spt_lookup(spt, upage)->writable);
+    for (i = 0; i < pg_per_block; i++) {
+        printf("\t\tafter page set %d : %x\n", se->idx * pg_per_block + i, *(int *)(upage + i * BLOCK_SECTOR_SIZE));
+    }
+    int pt;
+    int pt2;
     
+    printf("stack\n");
+    for (pt = PHYS_BASE - 64; pt > 0xbffffe60; pt -= 64) {
+        printf("\n%p ~ %p: char\n", pt, pt + 63);
+        for (pt2 = 0; pt2 < 64; pt2++) {
+            printf("%c", *(char *)(pt + pt2));
+            if (pt2 % 8 == 0) printf(" ");
+        }
+        printf("\n%p ~ %p : hex\n", pt, pt + 63);
+        printf(" ");
+        for (pt2 = 0; pt2 < 64; pt2 += 8) {
+            printf("%x ", (int)*(int *)(pt + pt2));
+            if (pt2 % 8 == 0) printf(" ");
+        }
+        printf(" ");
+    }
+    printf("\n");
+    
+       
     //printf("in frame addr : %p\n", se->fe);
     list_remove(&se->elem);
     lock_release(&swap_lock);
@@ -67,7 +98,6 @@ void swap_in(struct hash* spt, void* kpage, void* upage) {
 
 void swap_out(struct hash* spt, struct frame_entry* fe) {
     printf("\tswap_out k : %p fe : %p\n", fe->kpage, fe);
-
 
     lock_acquire(&swap_lock);
 
@@ -88,7 +118,8 @@ void swap_out(struct hash* spt, struct frame_entry* fe) {
     list_push_back(&swap_table, &se->elem);
     int i;
     for (i = 0; i < pg_per_block; i++) {
-        block_write(swap_device, idx * pg_per_block + i, fe->kpage + i * BLOCK_SECTOR_SIZE);
+        block_write(swap_device, idx * pg_per_block + i, se->upage + i * BLOCK_SECTOR_SIZE);
+        //printf("\t\tblock write %d : %x\n", idx * pg_per_block + i, *(int *)(se->upage + i * BLOCK_SECTOR_SIZE));
     }
     printf("\tblock_write idx : %d\n", idx * pg_per_block);
     spt_dealloc(spt, spt_e->upage);

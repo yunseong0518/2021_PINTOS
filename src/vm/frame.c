@@ -18,6 +18,7 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
     ASSERT (flags & PAL_USER);
     void* kpage;
     kpage = palloc_get_page(flags);
+    //printf("frame_get_page k : %p, flag : %d\n", kpage, flags);
     if (kpage) {
         lock_acquire(&frame_lock);
         struct frame_entry *fe;
@@ -40,11 +41,19 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         struct list_elem *e;
         struct frame_entry* fe;
         struct frame_entry* fe_evict;
-        fe_evict == NULL;
+        fe_evict = NULL;
         lock_acquire(&frame_lock);
         for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
             fe = list_entry(e, struct frame_entry, elem);
-            if (fe->LRU > fe_evict->LRU) {
+            //printf("\tfe->k : %p, flag : %d, LRU : %d\n", fe->kpage, fe->flags, fe->LRU);
+            if (fe_evict == NULL) {
+                if ((fe->flags & PAL_ZERO) == false) {
+                    //printf("\t\tpick k : %p, flag : %d, LRU : %d\n", fe->kpage, fe->flags, fe->LRU);
+                    fe_evict = fe;
+                }
+            } else if (fe->LRU > fe_evict->LRU) {
+                //printf("\t\tfe_evict->LRU : %d\n",fe_evict->LRU);
+                //printf("\t\tpicks k : %p, flag : %d, LRU : %d\n", fe->kpage, fe->flags, fe->LRU);
                 fe_evict = fe;
             }
         }
