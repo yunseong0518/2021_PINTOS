@@ -5,7 +5,6 @@
 #include "threads/vaddr.h"
 
 static int fid_max;
-static struct frame_entry* frame_lookup (void* kpage);
 
 void frame_init (void)
 {
@@ -28,11 +27,26 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         fe->tid = thread_current()->tid;
         fe->kpage = kpage;
         fe->LRU = 0;
+        struct list_elem* e;
+        // set LRU
+        for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
+            list_entry(e, struct frame_entry, elem)->LRU++;
+        }
         list_push_back (&frame_table, &fe->elem);
         lock_release(&frame_lock);
         return fe;
     } else {
-        PANIC("eviction requirement");
+        struct list_elem *e;
+        struct frame_entry* fe;
+        struct frame_entry* fe_evict;
+        fe_evict = list_entry(list_begin(&frame_table), struct frame_entry, elem);
+        for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
+            fe = list_entry(e, struct frame_entry, elem);
+            if (fe->LRU > fe_evict->LRU) {
+                fe_evict = fe;
+            }
+        }
+        swap_out(&thread_current()->spt, fe_evict);
     }
 }
 

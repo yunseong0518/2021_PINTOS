@@ -8,6 +8,7 @@
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "vm/spt.h"
+#include "vm/swap.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -195,6 +196,8 @@ page_fault (struct intr_frame *f)
          if (se->fe != NULL) {
             pagedir_clear_page(thread_current()->pagedir, se->upage);
             install_page (se->upage, se->fe->kpage, se->writable);
+            //printf("call swap in u : %p, k : %p\n", upage, se->fe->kpage);
+            //swap_in(&thread_current()->spt, se->fe->kpage);
          }
          return;
       }
@@ -219,6 +222,8 @@ page_fault (struct intr_frame *f)
       }
       memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
       install_page (upage, kpage, se->writable);
+      //printf("call swap in u : %p, k : %p\n", upage, kpage);
+      //swap_in(&thread_current()->spt, kpage);
       struct list_elem* e;
       for (e = list_begin(&mmap_table); e != list_end(&mmap_table); e = list_next(e)) {
          struct mmap_entry *me;
@@ -246,6 +251,8 @@ page_fault (struct intr_frame *f)
                spt_add_entry (&thread_current()->spt, upage_tmp, 0, PGSIZE, NULL, true, 0, true);
                uint8_t *kpage = spt_alloc (&thread_current()->spt, upage_tmp, PAL_USER | PAL_ZERO);
                install_page (upage_tmp, kpage, true);
+               //printf("call swap in u : %p, k : %p\n", upage, kpage);
+               //swap_in(&thread_current()->spt, kpage);
             }
             upage_tmp -= PGSIZE;
          }

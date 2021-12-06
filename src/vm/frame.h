@@ -22,5 +22,6 @@ struct lock frame_lock;
 void frame_init (void);
 struct frame_entry* frame_get_page (enum palloc_flags flags);
 void frame_free_page (void *kpage);
+struct frame_entry* frame_lookup(void *kpage);
 
 #endif // VM_FRAME_H

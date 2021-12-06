@@ -682,6 +682,8 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
+    //printf("call swap in k : %p\n", kpage);
+    swap_in(&thread_current()->spt, kpage);
 
     spt_add_entry (&thread_current()->spt,((uint8_t *) PHYS_BASE) - PGSIZE, 0, PGSIZE, NULL, true, 0, true);
 
