@@ -671,7 +671,8 @@ setup_stack (void **esp)
   uint8_t *kpage;
   
   bool success = false;
-  kpage = frame_get_page (PAL_USER | PAL_ZERO)->kpage;
+  spt_add_entry (&thread_current()->spt,((uint8_t *) PHYS_BASE) - PGSIZE, 0, PGSIZE, NULL, true, 0, true);
+  kpage = spt_alloc(&thread_current()->spt, ((uint8_t *) PHYS_BASE) - PGSIZE, PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
@@ -682,10 +683,9 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
+    printf("stack setup u : %p, k : %p\n", ((uint8_t *) PHYS_BASE) - PGSIZE, kpage);
     //printf("call swap in k : %p\n", kpage);
-    swap_in(&thread_current()->spt, kpage);
-
-    spt_add_entry (&thread_current()->spt,((uint8_t *) PHYS_BASE) - PGSIZE, 0, PGSIZE, NULL, true, 0, true);
+    //swap_in(&thread_current()->spt, kpage);
 
   return success;
 }

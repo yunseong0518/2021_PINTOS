@@ -26,10 +26,13 @@ struct spt_entry
     bool is_zero_page;
 };
 
+struct lock spt_lock;
+
 void spt_init (struct hash* spt);
 bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page);
 void spt_destroy (struct hash* spt);
 struct spt_entry* spt_lookup (struct hash* spt, void* upage);
+struct spt_entry* spt_lookup_frame (struct hash* spt, struct frame_entry* fe);
 void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags);
 void spt_dealloc (struct hash* spt, void* upage);
 void spt_free (struct hash* spt, void* upage);

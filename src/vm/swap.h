@@ -8,14 +8,15 @@
 
 struct swap_entry {
     struct list_elem elem;
-    struct frame_entry *fe;
+    void* upage;
     int idx;
 };
 
 struct list swap_table;
 
 void swap_init(void);
-void swap_in(struct hash* spt, void* kpage);
+void swap_in(struct hash* spt, void* kpage, void* upage);
 void swap_out(struct hash* spt, struct frame_entry* fe);
+struct swap_entry* swap_find(void* upage);
 
 #endif

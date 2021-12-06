@@ -14,6 +14,7 @@ struct frame_entry
     tid_t tid;
     void *kpage;
     int LRU;
+    enum palloc_flags flags;
 };
 
 struct list frame_table;

@@ -188,7 +188,8 @@ page_fault (struct intr_frame *f)
          break;
    }
 
-   //printf("page fault addr : %p, u : %p, tid : %d, write : %d\n", fault_addr, upage, thread_tid(), write);
+   printf("================================================================\n");
+   printf("page fault addr : %p, u : %p, tid : %d, write : %d\n", fault_addr, upage, thread_tid(), write);
    if (se != NULL && find_me == true && se->writable == false) {
       if (write) {
          me->dirty = true;
@@ -203,13 +204,21 @@ page_fault (struct intr_frame *f)
       }
    }
    else if (se != NULL && se->writable == false && write == true) {
+      printf("writable issue\n");
       syscall_exit(-1);
    }
 
    if (se != NULL && se->is_alloc == false) {
+      struct swap_entry* swap_e;
+
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
-      //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
-      if (se->file != NULL) {
+
+      printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
+      swap_e = swap_find(upage);
+      if (swap_e != NULL) {
+         swap_in(&thread_current()->spt, kpage, upage);
+      }
+      else if (se->file != NULL) {
          int fra;
          //printf("ofs : %d, file : %p\n", se->ofs, se->file);
          fra = file_read_at (se->file, kpage, se->page_read_bytes, se->ofs);
@@ -229,19 +238,21 @@ page_fault (struct intr_frame *f)
          struct mmap_entry *me;
          me = list_entry(e, struct mmap_entry, elem);
       }
+      //printf("finish lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
-      //printf("not user vaddr\n");
+      printf("not user vaddr\n");
       syscall_exit(-1);
    }
    if (!user) {
+      printf("kernel\n");
       syscall_exit(-1);
    }
    if (not_present) {
       if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
          // stack growth
-         //printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
+         printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
          void* upage_tmp;
          upage_tmp = PHYS_BASE - PGSIZE;
          while(upage_tmp >= pg_round_down(fault_addr)) {
@@ -259,7 +270,7 @@ page_fault (struct intr_frame *f)
       
          return;
       } else {
-         //printf("not present not stack\n");
+         printf("not present not stack\n");
          syscall_exit(-1);
       }
    }
