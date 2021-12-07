@@ -10,6 +10,7 @@ void frame_init (void)
 {
     lock_init (&frame_lock);
     list_init (&frame_table);
+    //printf("frame lock addr : %p\n", &frame_lock);
     fid_max = 0;
 }
 
@@ -34,6 +35,7 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
             list_entry(e, struct frame_entry, elem)->LRU++;
         }
+        //lock_init(&fe->fe_lock);
         list_push_back (&frame_table, &fe->elem);
         lock_release(&frame_lock);
         return fe;
@@ -42,6 +44,7 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         struct frame_entry* fe;
         struct frame_entry* fe_evict;
         fe_evict = NULL;
+        //lock_acquire(&evict_lock);
         lock_acquire(&frame_lock);
         for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
             fe = list_entry(e, struct frame_entry, elem);
@@ -57,8 +60,11 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
                 fe_evict = fe;
             }
         }
+        //lock_acquire(&fe_evict->fe_lock);
         lock_release(&frame_lock);
-        printf("fe_evict : %p\n", fe_evict);
+        
+        //printf("fe_evict : %p\n", fe_evict);
+
         swap_out(&thread_current()->spt, fe_evict);
         lock_acquire(&frame_lock);
         kpage = palloc_get_page(flags);
@@ -76,6 +82,7 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         }
         list_push_back (&frame_table, &fe->elem);
         lock_release(&frame_lock);
+        //lock_release(&evict_lock);
         return fe;
     }
 }

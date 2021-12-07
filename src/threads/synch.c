@@ -220,6 +220,12 @@ lock_try_acquire (struct lock *lock)
   return success;
 }
 
+#define _ASSERT(CONDITION, ...)                                       \
+        if (CONDITION) { } else {                               \
+                PANIC (__VA_ARGS__);   \
+        }
+
+
 /* Releases LOCK, which must be owned by the current thread.
 
    An interrupt handler cannot acquire a lock, so it does not
@@ -229,6 +235,7 @@ void
 lock_release (struct lock *lock) 
 {
   ASSERT (lock != NULL);
+  _ASSERT (lock_held_by_current_thread (lock), "%p", lock);
   ASSERT (lock_held_by_current_thread (lock));
 
   lock->holder = NULL;

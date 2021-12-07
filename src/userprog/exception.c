@@ -192,6 +192,7 @@ page_fault (struct intr_frame *f)
    esp = f->esp;
    //printf("================================================================\n");
    //printf("page fault addr : %p, u : %p, tid : %d, write : %d, wa : %d, esp : %p\n", fault_addr, upage, thread_tid(), write, se->writable, f->esp);
+   //hex_dump( f->esp , f->esp , PHYS_BASE - f->esp , true );
    if (se != NULL && find_me == true && se->writable == false) {
       if (write) {
          me->dirty = true;
@@ -206,7 +207,7 @@ page_fault (struct intr_frame *f)
       }
    }
    if (se != NULL && se->writable == false && write == true) {
-      printf("writable issue\n");
+      // printf("writable issue\n");
       syscall_exit(-1);
    }
 
@@ -215,24 +216,25 @@ page_fault (struct intr_frame *f)
 
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
 
-      //printf("lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
       swap_e = swap_find(upage);
       if (swap_e != NULL) {
          swap_in(&thread_current()->spt, kpage, upage);
-      }
-      else if (se->file != NULL) {
-         int fra;
-         //printf("ofs : %d, file : %p\n", se->ofs, se->file);
-         fra = file_read_at (se->file, kpage, se->page_read_bytes, se->ofs);
-         //printf("file read at : %d\n", fra);
-         if (fra != se->page_read_bytes)
-         {
-            PANIC ("file read panic");
-            return;
+      } else {
+         if (se->file != NULL) {
+            int fra;
+            //printf("ofs : %d, file : %p\n", se->ofs, se->file);
+            fra = file_read_at (se->file, kpage, se->page_read_bytes, se->ofs);
+            //printf("file read at : %d\n", fra);
+            if (fra != se->page_read_bytes)
+            {
+               PANIC ("file read panic");
+               return;
+            }
          }
+         memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
       }
-      memset (kpage + se->page_read_bytes, 0, se->page_zero_bytes);
       install_page (upage, kpage, se->writable);
+
       //printf("call swap in u : %p, k : %p\n", upage, kpage);
       //swap_in(&thread_current()->spt, kpage);
       struct list_elem* e;
@@ -244,17 +246,17 @@ page_fault (struct intr_frame *f)
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
-      printf("not user vaddr\n");
+      //printf("not user vaddr\n");
       syscall_exit(-1);
    }
    if (!user) {
-      printf("kernel\n");
+      //printf("kernel\n");
       syscall_exit(-1);
    }
    if (not_present) {
       if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
          // stack growth
-         printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
+         //printf("stack growth upage : %p, esp : %p, fault_addr : %p\n", upage, f->esp, fault_addr);
          void* upage_tmp;
          upage_tmp = PHYS_BASE - PGSIZE;
          while(upage_tmp >= pg_round_down(fault_addr)) {
@@ -272,7 +274,7 @@ page_fault (struct intr_frame *f)
       
          return;
       } else {
-         printf("not present not stack\n");
+         //printf("not present not stack\n");
          syscall_exit(-1);
       }
    }

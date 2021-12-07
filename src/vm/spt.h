@@ -26,8 +26,6 @@ struct spt_entry
     bool is_zero_page;
 };
 
-struct lock spt_lock;
-
 void spt_init (struct hash* spt);
 bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page);
 void spt_destroy (struct hash* spt);

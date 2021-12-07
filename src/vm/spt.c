@@ -22,11 +22,12 @@ static bool spt_less_func (const struct hash_elem *a, const struct hash_elem *b,
 
 void spt_init (struct hash* spt) {
     hash_init (spt, spt_hash_func, spt_less_func, NULL);
-    lock_init (&spt_lock);
+    lock_init (&thread_current()->spt_lock);
+    //printf("spt lock addr : %p\n", &spt_lock);
 }
 
 bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page) {
-    lock_acquire(&spt_lock);
+    //lock_acquire(&spt_lock);
     struct spt_entry* se;
     se = malloc (sizeof(struct spt_entry));
     ASSERT (se);
@@ -43,7 +44,7 @@ bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     se->is_zero_page = is_zero_page;
     struct hash_elem* he;
     he = hash_insert (spt, &se->elem);
-    lock_release(&spt_lock);
+    //lock_release(&spt_lock);
     if (he != NULL) {
         return false;
     } else {
@@ -53,7 +54,7 @@ bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
 
 void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {
     
-    lock_acquire(&spt_lock);
+    //lock_acquire(&spt_lock);
     struct spt_entry* se;
     se = spt_lookup (spt, upage);
     if (se == NULL) {
@@ -62,7 +63,7 @@ void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {
     se->fe = frame_get_page (flags);
 
     se->is_alloc = true;
-    lock_release(&spt_lock);
+    //lock_release(&spt_lock);
     return se->fe->kpage;
 }
 
@@ -71,18 +72,18 @@ void spt_dealloc (struct hash* spt, void* upage) {
     se = spt_lookup (spt, upage);
     if (se == NULL) PANIC ("spt_free se == NULL");
     se->is_alloc = false;
-    //se->fe = NULL;
+    se->fe = NULL;
 }
 
 void spt_free (struct hash* spt, void* upage) {
-    lock_acquire(&spt_lock);
+    //lock_acquire(&spt_lock);
     struct spt_entry* se;
     se = spt_lookup (spt, upage);
     if (se == NULL) PANIC ("spt_free se == NULL");
     if (se->fe == NULL) PANIC ("spt_free se->fe == NULL");
     if (se->fe->kpage == NULL) PANIC ("spt_free se->fe->kpage == NULL");
     frame_free_page(se->fe->kpage);
-    lock_release(&spt_lock);
+    //lock_release(&spt_lock);
 }
 
 struct spt_entry* spt_lookup (struct hash* spt, void* upage) {

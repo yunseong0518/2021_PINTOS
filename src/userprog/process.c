@@ -57,7 +57,7 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-  // printf("call process_execute with $%s\n", file_name);
+  printf("call process_execute with $%s\n", file_name);
 
   struct shared_param param;
 
@@ -151,6 +151,50 @@ start_process (void *param_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (program_name, &if_.eip, &if_.esp);
 
+  if (!success) {
+    send_signal(-1, SIG_EXEC);
+    palloc_free_page (file_name);
+    thread_exit ();
+  }
+  
+  /* Copy command to stack */
+  *(file_name + strlen(file_name)) = ' ';
+  if(save_ptr == file_name + strlen(file_name) - 1) *(save_ptr) = '\0';
+  else *(save_ptr) = ' ';
+  file_name_len = strlen(file_name) + 1;
+  *esp -= file_name_len;
+  *esp -= (unsigned)(*esp) % 4; // align memory
+  strlcpy (*esp, file_name, file_name_len);
+  
+  palloc_free_page (file_name);
+  file_name = (char*)(*esp);
+  save_ptr = file_name;
+   
+  /* Argument Passing */
+  for (token = strtok_r (NULL, " ", &save_ptr); token != NULL;
+       token = strtok_r (NULL, " ", &save_ptr)) {
+    while(*save_ptr == ' ') save_ptr++;
+    argc++; // swap delimiter to null terminations
+  }
+  
+  *esp -= sizeof(char*);
+  *(void**)(*esp) = NULL; // argv[argc]
+  *esp -= sizeof(char*) * argc;
+  save_ptr = file_name;
+  for (i = 0; i < argc; i++) {
+    *(char**)((*esp) + sizeof(void*) * i) = save_ptr;
+    save_ptr = save_ptr + strlen(save_ptr) + 1;
+    while(*save_ptr == ' ') save_ptr++;
+  }
+  *esp -= sizeof(void*);
+  *(void**)(*esp) = *esp + sizeof(void*);
+  *esp -= sizeof(int);
+  *(int*)(*esp) = argc;
+  *esp -= sizeof(void*);
+  *(void**)(*esp) = NULL; // fake ret
+
+  #if 0
+
   if (success) {
 
 
@@ -176,6 +220,11 @@ start_process (void *param_)
     }
   }
   argu_address[--argu_num_tmp] = if_.esp;
+
+  printf("tid : %d\n", thread_tid());
+  hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
+  if (thread_tid() == 5)
+    PANIC ("argu : %s\n", argument[0]);
 
 
   // align
@@ -206,7 +255,6 @@ start_process (void *param_)
   if_.esp -= 4;
   *(int *)if_.esp = 0;
 
-  //hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
   }
   
 
@@ -218,7 +266,8 @@ start_process (void *param_)
   if (!success) {
     thread_exit ();
   }
-    
+  
+  #endif
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -298,6 +347,7 @@ process_exit (void)
     // printf("finish file_close in %s\n", cur->name);
     sema_up(&cur->exit_sema);
     sema_down(&cur->mem_sema);
+    //lock_release(&evict_lock);
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -653,6 +703,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
     spt_add_entry (&thread_current()->spt, upage, page_read_bytes, page_zero_bytes, file, writable, ofs, false);
+    //printf("U : %p, f : %p\n", upage, file);
 
     read_bytes -= page_read_bytes;
     zero_bytes -= page_zero_bytes;
@@ -683,7 +734,7 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
-    printf("stack setup u : %p, k : %p\n", ((uint8_t *) PHYS_BASE) - PGSIZE, kpage);
+    //printf("stack setup u : %p, k : %p\n", ((uint8_t *) PHYS_BASE) - PGSIZE, kpage);
     //printf("call swap in k : %p\n", kpage);
     //swap_in(&thread_current()->spt, kpage);
 

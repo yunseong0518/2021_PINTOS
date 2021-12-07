@@ -155,7 +155,7 @@ syscall_handler (struct intr_frame *f)
 
 
       thread_current()->fd_table[fd] = file;
-      //printf("open with file : %p\n", thread_current()->fd_table[fd]);
+      //printf("open with file %s : %p\n", name, thread_current()->fd_table[fd]);
       // int k;
       // k = 1;
       // do {

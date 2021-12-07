@@ -124,6 +124,7 @@ struct thread
 #endif
 
    struct hash spt;
+   struct lock spt_lock;
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
