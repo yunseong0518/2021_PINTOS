@@ -269,6 +269,7 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
+  printf("[process_exit | %d] begin\n", thread_tid());
   struct thread *cur = thread_current ();
   uint32_t *pd;
   // printf("call process_exit in %d\n", cur->tid);
@@ -293,7 +294,7 @@ process_exit (void)
     if (me->tid == thread_tid()) {
       syscall_munmap(me->mapid);
     }
-  }
+  } 
 
     file_close(cur->running_file);
     // printf("finish file_close in %s\n", cur->name);
@@ -318,6 +319,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  printf("[process_exit | %d] finish\n", thread_tid());
     
 }
 

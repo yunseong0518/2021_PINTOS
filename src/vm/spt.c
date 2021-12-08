@@ -86,14 +86,17 @@ void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {
 }
 
 void spt_dealloc (struct hash* spt, void* upage) {
+    printf("[spt_dealloc | %d] begin\n", thread_tid());
     struct spt_entry* se;
     se = spt_lookup (spt, upage);
     if (se == NULL) PANIC ("spt_free se == NULL");
     se->is_alloc = false;
     se->fe = NULL;
+    printf("[spt_dealloc | %d] finish\n", thread_tid());
 }
 
 void spt_free (struct hash* spt, void* upage) {
+    printf("[spt_free | %d] begin\n", thread_tid());
     lock_acquire(&spt_lock_all);
     struct spt_entry* se;
     se = spt_lookup (spt, upage);
@@ -102,17 +105,23 @@ void spt_free (struct hash* spt, void* upage) {
     if (se->fe->kpage == NULL) PANIC ("spt_free se->fe->kpage == NULL");
     frame_free_page(se->fe->kpage);
     lock_release(&spt_lock_all);
+    printf("[spt_free | %d] finish\n", thread_tid());
 }
 
 struct spt_entry* spt_lookup (struct hash* spt, void* upage) {
+    printf("[spt_lookup | %d] begin\n", thread_tid());
     struct spt_entry se;
     struct hash_elem *he;
     se.upage = upage;
     he = hash_find (spt, &se.elem);
-    if (he == NULL)
+    if (he == NULL) {
+        printf("[spt_lookup | %d] finish\n", thread_tid());
         return NULL;
-    else
+    }
+    else {
+        printf("[spt_lookup | %d] finish\n", thread_tid());
         return hash_entry (he, struct spt_entry, elem);
+    }
 }
 
 struct spt_entry* spt_lookup_all_frame (struct frame_entry* fe) {
@@ -133,13 +142,16 @@ struct spt_entry* spt_lookup_all_frame (struct frame_entry* fe) {
     return NULL; 
 }
 struct spt_entry* spt_lookup_frame (struct hash* spt, struct frame_entry* fe) {
+    printf("[spt_lookup_frame | %d] begin\n", thread_tid());
     struct hash_iterator hi;
     hash_first (&hi, spt);
     while (hash_next(&hi)) {
         struct spt_entry* se;
         se = hash_entry (hash_cur (&hi), struct spt_entry, elem);
-        if (se->fe == fe)
+        if (se->fe == fe) {
+            printf("[spt_lookup_frame | %d] finish\n", thread_tid());
             return se;
+        }
     }
     printf("not found\n");
     return NULL;
@@ -150,6 +162,7 @@ void spt_destroy (struct hash* spt) {
 }
 
 void spt_remove_entry (struct hash* spt, void* upage) {
+    printf("[spt_remove_entry | %d] begin\n", thread_tid());
     struct spt_entry* se;
     struct spt_entry* se_all;
     se = spt_lookup(spt, upage);
@@ -159,6 +172,7 @@ void spt_remove_entry (struct hash* spt, void* upage) {
     } else {
         hash_delete (spt, &se->elem);
         list_remove (&se->elem_all);
+        printf("[spt_remove_entry | %d] finish\n", thread_tid());
     }
     // do it later
 }

@@ -59,7 +59,7 @@ void swap_in(struct hash* spt, void* kpage, void* upage) {
     t = thread_current();
     for (i = 0; i < pg_per_block; i++) {
         block_read(swap_device, se->idx * pg_per_block + i, kpage + i * BLOCK_SECTOR_SIZE);
-        printf("\t\t[swap_in | %d] block read %d : %x\n", thread_tid(), se->idx * pg_per_block + i, *(int *)(kpage + i * BLOCK_SECTOR_SIZE));
+        printf("\t\t[swap_in | %d] block read %d : %p, %x\n", thread_tid(), se->idx * pg_per_block + i, kpage + i * BLOCK_SECTOR_SIZE, *(int *)(kpage + i * BLOCK_SECTOR_SIZE));
     }
     //printf("\tblock_read idx : %d\n", se->idx * pg_per_block);
     //hex_dump(0xbffffe40 , 0xbffffe40 , PHYS_BASE - 0xbffffe40 , true );

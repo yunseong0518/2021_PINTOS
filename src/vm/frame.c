@@ -104,12 +104,14 @@ void frame_free_page (void *kpage)
 
 struct frame_entry* frame_lookup (void *kpage)
 {
+    printf("[frame_lookup | %d] begin\n", thread_tid());
     struct list_elem *e;
     for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
         struct frame_entry *fe;
         fe = list_entry(e, struct frame_entry, elem);
         if (fe->kpage == kpage)
         {
+            printf("[frame_lookup | %d] finish\n", thread_tid());
             return fe;
         }
     }
