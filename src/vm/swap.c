@@ -40,11 +40,11 @@ struct swap_entry* swap_find(void* upage) {
 
 void swap_in(struct hash* spt, void* kpage, void* upage) {
     printf("\t\t[swap_in | %d] begin u : %p k : %p\n", thread_tid(), upage, kpage);
-    lock_acquire(&swap_lock);
     
     struct list_elem* e;
     struct swap_entry* se;
     bool find_se;
+    lock_acquire(&swap_lock);
     se = swap_find(upage);
     if (se == NULL) PANIC ("swap_in not exist upage");
     //printf("swap in idx : %d\n", se->idx);
@@ -81,13 +81,13 @@ void swap_out(struct hash* spt, struct frame_entry* fe) {
     printf("\t\t[swap_out | %d] begin k : %p fe : %p tid : %d\n", thread_tid(), fe->kpage, fe, thread_tid());
     printf("\t\t[swap_out | %d] try swap_lock acquire\n", thread_tid());
 
-    lock_acquire(&swap_lock);
 
     struct spt_entry* spt_e;
     printf("\t\t[swap_out | %d] call spt_lookup_all_frame\n", thread_tid());
     spt_e = spt_lookup_all_frame(fe);
     //printf("\tspt find %p\n", spt_e);
     
+    lock_acquire(&swap_lock);
     int idx;
     idx = bitmap_scan_and_flip(swap_bitmap, 0, 1, false);
     if (idx == BITMAP_ERROR) {
@@ -107,12 +107,13 @@ void swap_out(struct hash* spt, struct frame_entry* fe) {
     }
     printf("\t\t[swap_out | %d] finish block_write\n", thread_tid());
     //printf("\tblock_write idx : %d\n", idx * pg_per_block);
-    pagedir_clear_page(thread_current()->pagedir, spt_e->upage);
     printf("\t\t[swap_out | %d] call spt_dealloc\n", thread_tid());
-    spt_dealloc(spt, spt_e->upage);
+    spt_e->is_alloc = false;
+    spt_e->fe = NULL;
+    pagedir_clear_page(spt_e->t->pagedir, spt_e->upage);
     //printf("swap_out finish idx : %d\n", idx);
     printf("\t\t[swap_out | %d] call frame_free_page\n", thread_tid());
     frame_free_page(fe->kpage);
-    printf("\t\t[swap_out | %d] finish %p\n", thread_tid(), fe->kpage);
     lock_release(&swap_lock);
+    printf("\t\t[swap_out | %d] finish %p\n", thread_tid(), fe->kpage);
 }

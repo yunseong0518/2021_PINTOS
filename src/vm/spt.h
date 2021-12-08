@@ -13,6 +13,7 @@ struct spt_entry
 {
     int fid;
     tid_t tid;
+    struct thread* t;
     bool avail_swap;
     struct hash_elem elem;
     struct list_elem elem_all;

@@ -171,10 +171,7 @@ page_fault (struct intr_frame *f)
    void *upage;
    upage = pg_round_down (fault_addr);
    printf("[page_fault | %d] begin u : %p\n", thread_tid(), upage);
-   
-   lock_acquire(&swap_lock);
-   lock_release(&swap_lock);
-   lock_acquire (&fault_lock);
+
    struct spt_entry* se;
    se = spt_lookup (&thread_current()->spt, upage);
 
@@ -213,14 +210,12 @@ page_fault (struct intr_frame *f)
             //printf("call swap in u : %p, k : %p\n", upage, se->fe->kpage);
             //swap_in(&thread_current()->spt, se->fe->kpage);
          }
-         lock_release(&fault_lock);
          printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
          return;
       }
    }
    if (se != NULL && se->writable == false && write == true) {
       // printf("writable issue\n");
-      lock_release(&fault_lock);
       printf("[page_fault | %d] finish with writable issue\n", thread_tid());
       syscall_exit(-1);
    }
@@ -259,19 +254,16 @@ page_fault (struct intr_frame *f)
          me = list_entry(e, struct mmap_entry, elem);
       }
       //printf("finish lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
-      lock_release(&fault_lock);
       printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
       //printf("not user vaddr\n");
-      lock_release(&fault_lock);
       printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
       syscall_exit(-1);
    }
    if (!user) {
       //printf("kernel\n");
-      lock_release(&fault_lock);
       printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
       syscall_exit(-1);
    }
@@ -293,12 +285,10 @@ page_fault (struct intr_frame *f)
             }
             upage_tmp -= PGSIZE;
          }
-         lock_release(&fault_lock);
          printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
          return;
       } else {
          //printf("not present not stack\n");
-         lock_release(&fault_lock);
          printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
          syscall_exit(-1);
       }

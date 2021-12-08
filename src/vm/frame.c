@@ -19,7 +19,6 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
     printf("\t[frame_get_page | %d] begin\n", thread_tid());
     ASSERT (flags & PAL_USER);
     void* kpage;
-    lock_acquire(&frame_lock);
     kpage = palloc_get_page(flags);
     printf("\t[frame_get_page | %d] try frame_get_page k : %p, flag : %d\n", thread_tid(), kpage, flags);
     if (kpage) {
@@ -33,13 +32,16 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         fe->LRU = 0;
         fe->flags = flags;
         struct list_elem* e;
+        lock_init(&fe->fe_lock);
         // set LRU
+        lock_acquire(&frame_lock);
         for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
             list_entry(e, struct frame_entry, elem)->LRU++;
         }
-        //lock_init(&fe->fe_lock);
+        lock_acquire(&fe->fe_lock);
         list_push_back (&frame_table, &fe->elem);
         lock_release(&frame_lock);
+        lock_release(&fe->fe_lock);
         printf("\t[frame_get_page | %d] finish\n", thread_tid());
         return fe;
     } else {
@@ -47,8 +49,6 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         struct frame_entry* fe;
         struct frame_entry* fe_evict;
         fe_evict = NULL;
-        //lock_acquire(&evict_lock);
-        //lock_acquire(&frame_lock);
         printf("\t[frame_get_page | %d] try evict\n", thread_tid());
         for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
             fe = list_entry(e, struct frame_entry, elem);
@@ -64,8 +64,6 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
                 fe_evict = fe;
             }
         }
-        //lock_acquire(&fe_evict->fe_lock);
-        
         //printf("fe_evict : %p\n", fe_evict);
         printf("\t[frame_get_page | %d] call swap_out\n", thread_tid());
         swap_out(&thread_current()->spt, fe_evict);
@@ -78,13 +76,16 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
         fe->kpage = kpage;
         fe->LRU = 0;
         fe->flags = flags;
+        lock_init(&fe->fe_lock);
         // set LRU
+        lock_acquire(&frame_lock);
         for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
             list_entry(e, struct frame_entry, elem)->LRU++;
         }
+        lock_acquire(&fe->fe_lock);
         list_push_back (&frame_table, &fe->elem);
         lock_release(&frame_lock);
-        //lock_release(&evict_lock);
+        lock_release(&fe->fe_lock);
         printf("\t[frame_get_page | %d] finish\n", thread_tid());
         return fe;
     }
@@ -97,13 +98,18 @@ void frame_free_page (void *kpage)
     struct frame_entry* fe;
     fe = frame_lookup(kpage);
     ASSERT (fe);
+    lock_acquire(&fe->fe_lock);
+    lock_acquire(&frame_lock);
     list_remove (&fe->elem);
+    lock_release(&frame_lock);
     palloc_free_page(kpage);
+    lock_release(&fe->fe_lock);
     printf("\t\t\t[frame_free_page | %d] finish\n", thread_tid());
 }
 
 struct frame_entry* frame_lookup (void *kpage)
 {
+    lock_acquire(&frame_lock);
     printf("[frame_lookup | %d] begin\n", thread_tid());
     struct list_elem *e;
     for (e = list_begin(&frame_table); e != list_end(&frame_table); e = list_next(e)) {
@@ -112,8 +118,10 @@ struct frame_entry* frame_lookup (void *kpage)
         if (fe->kpage == kpage)
         {
             printf("[frame_lookup | %d] finish\n", thread_tid());
+            lock_release(&frame_lock);
             return fe;
         }
     }
+    lock_release(&frame_lock);
     return NULL;
 }
