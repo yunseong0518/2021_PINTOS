@@ -19,4 +19,6 @@ void swap_in(struct hash* spt, void* kpage, void* upage);
 void swap_out(struct hash* spt, struct frame_entry* fe);
 struct swap_entry* swap_find(void* upage);
 
+struct lock swap_lock;
+
 #endif

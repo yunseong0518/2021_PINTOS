@@ -12,7 +12,6 @@ static struct block *swap_device;
 int swap_cnt;
 #define pg_per_block (PGSIZE / BLOCK_SECTOR_SIZE)
 
-struct lock swap_lock;
 
 void swap_init() {
     list_init(&swap_table);
@@ -23,7 +22,7 @@ void swap_init() {
     swap_bitmap = bitmap_create(swap_cnt);
     ASSERT(swap_bitmap != NULL);
     lock_init(&swap_lock);
-    printf("swap lock addr : %p\n", &swap_lock);
+    printf("[swap_init | %d] swap lock addr : %p\n", thread_tid(), &swap_lock);
 }
 
 struct swap_entry* swap_find(void* upage) {
@@ -40,7 +39,7 @@ struct swap_entry* swap_find(void* upage) {
 }
 
 void swap_in(struct hash* spt, void* kpage, void* upage) {
-    //printf("swap_in u : %p k : %p\n", upage, kpage);
+    printf("\t\t[swap_in | %d] begin u : %p k : %p\n", thread_tid(), upage, kpage);
     lock_acquire(&swap_lock);
     
     struct list_elem* e;
@@ -58,18 +57,13 @@ void swap_in(struct hash* spt, void* kpage, void* upage) {
     //kpage = spt_alloc(spt, upage, PAL_USER);
     struct thread* t;
     t = thread_current();
-    pagedir_clear_page(t->pagedir, upage);
-    pagedir_get_page (t->pagedir, upage);
-    pagedir_set_page (t->pagedir, upage, kpage, true);
     for (i = 0; i < pg_per_block; i++) {
-        block_read(swap_device, se->idx * pg_per_block + i, upage + i * BLOCK_SECTOR_SIZE);
-            //printf("\t\tblock read %d : %x\n", se->idx * pg_per_block + i, *(int *)(upage + i * BLOCK_SECTOR_SIZE));
+        block_read(swap_device, se->idx * pg_per_block + i, kpage + i * BLOCK_SECTOR_SIZE);
+        printf("\t\t[swap_in | %d] block read %d : %x\n", thread_tid(), se->idx * pg_per_block + i, *(int *)(kpage + i * BLOCK_SECTOR_SIZE));
     }
     //printf("\tblock_read idx : %d\n", se->idx * pg_per_block);
     //hex_dump(0xbffffe40 , 0xbffffe40 , PHYS_BASE - 0xbffffe40 , true );
-    pagedir_clear_page(t->pagedir, upage);
-    pagedir_get_page (t->pagedir, upage);
-    pagedir_set_page (t->pagedir, upage, kpage, spt_lookup(spt, upage)->writable);
+    
     for (i = 0; i < pg_per_block; i++) {
         //printf("\t\tafter page set %d : %x\n", se->idx * pg_per_block + i, *(int *)(upage + i * BLOCK_SECTOR_SIZE));
     }
@@ -80,14 +74,17 @@ void swap_in(struct hash* spt, void* kpage, void* upage) {
     //printf("in frame addr : %p\n", se->fe);
     list_remove(&se->elem);
     lock_release(&swap_lock);
+    printf("\t\t[swap_in | %d] finish\n", thread_tid());
 }
 
 void swap_out(struct hash* spt, struct frame_entry* fe) {
-    printf("\tswap_out k : %p fe : %p\n", fe->kpage, fe);
+    printf("\t\t[swap_out | %d] begin k : %p fe : %p tid : %d\n", thread_tid(), fe->kpage, fe, thread_tid());
+    printf("\t\t[swap_out | %d] try swap_lock acquire\n", thread_tid());
 
     lock_acquire(&swap_lock);
 
     struct spt_entry* spt_e;
+    printf("\t\t[swap_out | %d] call spt_lookup_all_frame\n", thread_tid());
     spt_e = spt_lookup_all_frame(fe);
     //printf("\tspt find %p\n", spt_e);
     
@@ -102,15 +99,20 @@ void swap_out(struct hash* spt, struct frame_entry* fe) {
     se->idx = idx;
     list_push_back(&swap_table, &se->elem);
     int i;
+    printf("\t\t[swap_out | %d] start block_write\n", thread_tid());
     for (i = 0; i < pg_per_block; i++) {
-        block_write(swap_device, idx * pg_per_block + i, se->upage + i * BLOCK_SECTOR_SIZE);
-            //printf("\t\tblock write %d : %x\n", idx * pg_per_block + i, *(int *)(se->upage + i * BLOCK_SECTOR_SIZE));
+        printf("\t\t\t[swap_out | %d] try block write %d : %p, %x\n", thread_tid(), idx * pg_per_block + i, (fe->kpage + i * BLOCK_SECTOR_SIZE), *(int *)(fe->kpage + i * BLOCK_SECTOR_SIZE));
+        //printf("\t\t[swap_out] try block write %d : %x\n", idx * pg_per_block + i, *(int *)(se->upage + i * BLOCK_SECTOR_SIZE));
+        block_write(swap_device, idx * pg_per_block + i, fe->kpage + i * BLOCK_SECTOR_SIZE);
     }
+    printf("\t\t[swap_out | %d] finish block_write\n", thread_tid());
     //printf("\tblock_write idx : %d\n", idx * pg_per_block);
     pagedir_clear_page(thread_current()->pagedir, spt_e->upage);
+    printf("\t\t[swap_out | %d] call spt_dealloc\n", thread_tid());
     spt_dealloc(spt, spt_e->upage);
     //printf("swap_out finish idx : %d\n", idx);
+    printf("\t\t[swap_out | %d] call frame_free_page\n", thread_tid());
     frame_free_page(fe->kpage);
-    //printf("\tswap_out finish %p\n", fe->kpage);
+    printf("\t\t[swap_out | %d] finish %p\n", thread_tid(), fe->kpage);
     lock_release(&swap_lock);
 }

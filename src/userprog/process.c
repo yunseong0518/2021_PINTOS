@@ -20,6 +20,7 @@
 #include "lib/string.h"
 #include "userprog/syscall.h"
 #include "vm/spt.h"
+#include "userprog/exception.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -649,6 +650,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   return true;
   #endif
   #if 1
+  lock_acquire(&fault_lock);
   while (read_bytes > 0 || zero_bytes > 0) {
     size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
     size_t page_zero_bytes = PGSIZE - page_read_bytes;
@@ -661,6 +663,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
     upage += PGSIZE;
     ofs += page_read_bytes;
   }
+  lock_release(&fault_lock);
   #endif
   return true;
 }
@@ -670,6 +673,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
+  printf("[setup_stack | %d ] begin\n", thread_tid());
+  lock_acquire(&fault_lock);
+  printf("[setup_stack | %d] finish wait fault\n", thread_tid());
   uint8_t *kpage;
   
   bool success = false;
@@ -685,10 +691,11 @@ setup_stack (void **esp)
           frame_free_page (kpage);
       }
     }
+  lock_release(&fault_lock);
     //printf("stack setup u : %p, k : %p\n", ((uint8_t *) PHYS_BASE) - PGSIZE, kpage);
     //printf("call swap in k : %p\n", kpage);
     //swap_in(&thread_current()->spt, kpage);
-
+  printf("[setup_stack | %d] finish\n", thread_tid());
   return success;
 }
 

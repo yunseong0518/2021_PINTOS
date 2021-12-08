@@ -184,7 +184,7 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
   #ifdef VM
-    spt_init(&t->spt);
+    spt_init(&t->spt, t->tid);
   #endif
 
   /* Stack frame for kernel_thread(). */

@@ -23,7 +23,7 @@ syscall_init (void)
   list_init(&mmap_table);
   mapid_count = 1;
   lock_init(&filesys_lock);
-  printf("filesys lock %p\n", &filesys_lock);
+  printf("[syscall_init] filesys lock %p\n", &filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
