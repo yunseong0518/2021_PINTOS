@@ -57,7 +57,7 @@ process_execute (const char *file_name)
 {
   char *fn_copy;
   tid_t tid;
-  printf("call process_execute with $%s\n", file_name);
+//  printf("call process_execute with $%s\n", file_name);
 
   struct shared_param param;
 
@@ -107,7 +107,6 @@ start_process (void *param_)
   char *file_name = param->fn_copy;
   struct intr_frame if_;
   bool success;
-
   // variable for parsing file name
   char file_name_no_double[128];
   char *program_name;
@@ -136,8 +135,7 @@ start_process (void *param_)
       }
     }
   }
-
-
+  file_name_no_double[j] = '\0';
   // parsing file name for program name
   program_name = strtok_r(param->fn_copy, " ", &tmp_ptr);
   real_program_name = strtok_r(file_name_no_double, " ", &ptr);
@@ -150,50 +148,6 @@ start_process (void *param_)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (program_name, &if_.eip, &if_.esp);
-
-  if (!success) {
-    send_signal(-1, SIG_EXEC);
-    palloc_free_page (file_name);
-    thread_exit ();
-  }
-  
-  /* Copy command to stack */
-  *(file_name + strlen(file_name)) = ' ';
-  if(save_ptr == file_name + strlen(file_name) - 1) *(save_ptr) = '\0';
-  else *(save_ptr) = ' ';
-  file_name_len = strlen(file_name) + 1;
-  *esp -= file_name_len;
-  *esp -= (unsigned)(*esp) % 4; // align memory
-  strlcpy (*esp, file_name, file_name_len);
-  
-  palloc_free_page (file_name);
-  file_name = (char*)(*esp);
-  save_ptr = file_name;
-   
-  /* Argument Passing */
-  for (token = strtok_r (NULL, " ", &save_ptr); token != NULL;
-       token = strtok_r (NULL, " ", &save_ptr)) {
-    while(*save_ptr == ' ') save_ptr++;
-    argc++; // swap delimiter to null terminations
-  }
-  
-  *esp -= sizeof(char*);
-  *(void**)(*esp) = NULL; // argv[argc]
-  *esp -= sizeof(char*) * argc;
-  save_ptr = file_name;
-  for (i = 0; i < argc; i++) {
-    *(char**)((*esp) + sizeof(void*) * i) = save_ptr;
-    save_ptr = save_ptr + strlen(save_ptr) + 1;
-    while(*save_ptr == ' ') save_ptr++;
-  }
-  *esp -= sizeof(void*);
-  *(void**)(*esp) = *esp + sizeof(void*);
-  *esp -= sizeof(int);
-  *(int*)(*esp) = argc;
-  *esp -= sizeof(void*);
-  *(void**)(*esp) = NULL; // fake ret
-
-  #if 0
 
   if (success) {
 
@@ -221,10 +175,8 @@ start_process (void *param_)
   }
   argu_address[--argu_num_tmp] = if_.esp;
 
-  printf("tid : %d\n", thread_tid());
-  hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
-  if (thread_tid() == 5)
-    PANIC ("argu : %s\n", argument[0]);
+  //printf("tid : %d\n", thread_tid());
+ // hex_dump( if_.esp , if_.esp , PHYS_BASE - if_.esp , true );
 
 
   // align
@@ -267,7 +219,6 @@ start_process (void *param_)
     thread_exit ();
   }
   
-  #endif
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
