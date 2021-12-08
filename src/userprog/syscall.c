@@ -23,6 +23,7 @@ syscall_init (void)
   list_init(&mmap_table);
   mapid_count = 1;
   lock_init(&filesys_lock);
+  printf("filesys lock %p\n", &filesys_lock);
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -302,7 +303,7 @@ syscall_handler (struct intr_frame *f)
       fd = *(int *)(f->esp + 4);
       syscall_check_vaddr(f->esp + 8);
       addr = *(void **)(f->esp + 8);
-      //printf("mmap with fd : %d, addr : %p, tid : %d\n", fd, addr, thread_tid());
+      printf("mmap with fd : %d, addr : %p, tid : %d\n", fd, addr, thread_tid());
       if (addr == NULL) {
         (f->eax) = -1;
         break;
@@ -321,6 +322,7 @@ syscall_handler (struct intr_frame *f)
       struct file* file_re;
       if (file == NULL) {
         lock_release(&filesys_lock);
+        printf("mmap file NULL\n");
         (f->eax) = -1;
         break;
       }
@@ -330,6 +332,7 @@ syscall_handler (struct intr_frame *f)
 
       lock_release(&filesys_lock);
       if (length == 0) {
+        printf("mmap file length 0\n");
         (f->eax) = -1;
         break;
       }
@@ -361,6 +364,7 @@ syscall_handler (struct intr_frame *f)
           ofs += PGSIZE;
           length -= PGSIZE;
         }
+        printf("spt_success false\n");
         (f->eax) = -1;
         break;
       }

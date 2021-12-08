@@ -23,11 +23,17 @@ static bool spt_less_func (const struct hash_elem *a, const struct hash_elem *b,
 void spt_init (struct hash* spt) {
     hash_init (spt, spt_hash_func, spt_less_func, NULL);
     lock_init (&thread_current()->spt_lock);
-    //printf("spt lock addr : %p\n", &spt_lock);
+    printf("spt lock tid : %d addr : %p\n", thread_tid(), &thread_current()->spt_lock);
+}
+
+void spt_all_init () {
+    list_init (&spt_all);
+    lock_init(&spt_lock_all);
+    printf("spt_lock_all : %p\n", &spt_lock_all);
 }
 
 bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_t page_zero_bytes, struct file *file, bool writable, off_t ofs, bool is_zero_page) {
-    //lock_acquire(&spt_lock);
+    lock_acquire(&spt_lock_all);
     struct spt_entry* se;
     se = malloc (sizeof(struct spt_entry));
     ASSERT (se);
@@ -44,26 +50,29 @@ bool spt_add_entry (struct hash* spt, void* upage, size_t page_read_bytes, size_
     se->is_zero_page = is_zero_page;
     struct hash_elem* he;
     he = hash_insert (spt, &se->elem);
-    //lock_release(&spt_lock);
+    list_push_back (&spt_all, &se->elem_all);
+    lock_release(&spt_lock_all);
     if (he != NULL) {
+        printf("spt_add_entry he NULL\n");
         return false;
-    } else {
+    }
+    else {
         return true;
     }
 }
 
 void* spt_alloc (struct hash* spt, void* upage, enum palloc_flags flags) {
     
-    //lock_acquire(&spt_lock);
+    lock_acquire(&spt_lock_all);
     struct spt_entry* se;
     se = spt_lookup (spt, upage);
     if (se == NULL) {
         PANIC ("spt alloc no upage");
     }
+    lock_release(&spt_lock_all);
     se->fe = frame_get_page (flags);
-
+    //printf("spt add frame k : %p\n", se->fe->kpage);
     se->is_alloc = true;
-    //lock_release(&spt_lock);
     return se->fe->kpage;
 }
 
@@ -97,6 +106,22 @@ struct spt_entry* spt_lookup (struct hash* spt, void* upage) {
         return hash_entry (he, struct spt_entry, elem);
 }
 
+struct spt_entry* spt_lookup_all_frame (struct frame_entry* fe) {
+    printf("tid : %d, fe->tid : %d\n", thread_tid(), fe->tid);
+    lock_acquire(&spt_lock_all);
+    struct list_elem *e;
+    for (e = list_begin(&spt_all); e != list_end(&spt_all); e = list_next(e)) {
+        struct spt_entry* se;
+        se = list_entry (e, struct spt_entry, elem_all);
+        if (se->fe == fe) {
+            lock_release(&spt_lock_all);
+            return se;
+        }
+    }
+    printf("not found all\n");
+    lock_release(&spt_lock_all);
+    return NULL;
+}
 struct spt_entry* spt_lookup_frame (struct hash* spt, struct frame_entry* fe) {
     struct hash_iterator hi;
     hash_first (&hi, spt);
@@ -116,11 +141,14 @@ void spt_destroy (struct hash* spt) {
 
 void spt_remove_entry (struct hash* spt, void* upage) {
     struct spt_entry* se;
+    struct spt_entry* se_all;
     se = spt_lookup(spt, upage);
+    //printf("spt remove k : \n");
     if (se == NULL) {
         PANIC ("spt no remove entry");
     } else {
         hash_delete (spt, &se->elem);
+        list_remove (&se->elem_all);
     }
     // do it later
 }

@@ -132,6 +132,7 @@ main (void)
 #ifdef VM
   frame_init();
   swap_init();
+  spt_all_init();
 #endif
   printf ("Boot complete.\n");
   

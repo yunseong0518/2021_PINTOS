@@ -23,7 +23,7 @@ void swap_init() {
     swap_bitmap = bitmap_create(swap_cnt);
     ASSERT(swap_bitmap != NULL);
     lock_init(&swap_lock);
-    //printf("swap lock addr : %p\n", &swap_lock);
+    printf("swap lock addr : %p\n", &swap_lock);
 }
 
 struct swap_entry* swap_find(void* upage) {
@@ -83,12 +83,12 @@ void swap_in(struct hash* spt, void* kpage, void* upage) {
 }
 
 void swap_out(struct hash* spt, struct frame_entry* fe) {
-    //printf("\tswap_out k : %p fe : %p\n", fe->kpage, fe);
+    printf("\tswap_out k : %p fe : %p\n", fe->kpage, fe);
 
     lock_acquire(&swap_lock);
 
     struct spt_entry* spt_e;
-    spt_e = spt_lookup_frame(spt, fe);
+    spt_e = spt_lookup_all_frame(fe);
     //printf("\tspt find %p\n", spt_e);
     
     int idx;

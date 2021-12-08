@@ -10,7 +10,7 @@ void frame_init (void)
 {
     lock_init (&frame_lock);
     list_init (&frame_table);
-    //printf("frame lock addr : %p\n", &frame_lock);
+    printf("frame lock addr : %p\n", &frame_lock);
     fid_max = 0;
 }
 
@@ -90,6 +90,7 @@ struct frame_entry* frame_get_page (enum palloc_flags flags)
 void frame_free_page (void *kpage)
 {
     ASSERT (is_kernel_vaddr(kpage));
+    printf("frame free page %p\n", kpage);
     struct frame_entry* fe;
     fe = frame_lookup(kpage);
     ASSERT (fe);
