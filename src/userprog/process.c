@@ -269,7 +269,7 @@ process_wait (tid_t child_tid)
 void
 process_exit (void)
 {
-  printf("[process_exit | %d] begin\n", thread_tid());
+  //printf("[process_exit | %d] begin\n", thread_tid());
   struct thread *cur = thread_current ();
   uint32_t *pd;
   // printf("call process_exit in %d\n", cur->tid);
@@ -319,7 +319,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  printf("[process_exit | %d] finish\n", thread_tid());
+  //printf("[process_exit | %d] finish\n", thread_tid());
     
 }
 
@@ -675,9 +675,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  printf("[setup_stack | %d ] begin\n", thread_tid());
+  //printf("[setup_stack | %d ] begin\n", thread_tid());
   lock_acquire(&fault_lock);
-  printf("[setup_stack | %d] finish wait fault\n", thread_tid());
+  //printf("[setup_stack | %d] finish wait fault\n", thread_tid());
   uint8_t *kpage;
   
   bool success = false;
@@ -697,7 +697,7 @@ setup_stack (void **esp)
     //printf("stack setup u : %p, k : %p\n", ((uint8_t *) PHYS_BASE) - PGSIZE, kpage);
     //printf("call swap in k : %p\n", kpage);
     //swap_in(&thread_current()->spt, kpage);
-  printf("[setup_stack | %d] finish\n", thread_tid());
+  //printf("[setup_stack | %d] finish\n", thread_tid());
   return success;
 }
 

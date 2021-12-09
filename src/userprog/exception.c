@@ -170,7 +170,7 @@ page_fault (struct intr_frame *f)
 
    void *upage;
    upage = pg_round_down (fault_addr);
-   printf("[page_fault | %d] begin u : %p\n", thread_tid(), upage);
+   //printf("[page_fault | %d] begin u : %p\n", thread_tid(), upage);
 
    struct spt_entry* se;
    se = spt_lookup (&thread_current()->spt, upage);
@@ -197,10 +197,10 @@ page_fault (struct intr_frame *f)
    void* esp;
    esp = f->esp;
    //printf("================================================================\n");
-   printf("[page_fault | %d] addr : %p, u : %p, tid : %d, write : %d, wa : %d, esp : %p\n", thread_tid(), fault_addr, upage, thread_tid(), write, se->writable, f->esp);
+   //printf("[page_fault | %d] addr : %p, u : %p, tid : %d, write : %d, wa : %d, esp : %p\n", thread_tid(), fault_addr, upage, thread_tid(), write, se->writable, f->esp);
    //hex_dump( f->esp , f->esp , PHYS_BASE - f->esp , true );
    if (se != NULL && find_me == true && se->writable == false) {
-      printf("[page_fault | %d] set mmap dirty\n", thread_tid());
+      //printf("[page_fault | %d] set mmap dirty\n", thread_tid());
       if (write) {
          me->dirty = true;
          se->writable = true;
@@ -210,25 +210,25 @@ page_fault (struct intr_frame *f)
             //printf("call swap in u : %p, k : %p\n", upage, se->fe->kpage);
             //swap_in(&thread_current()->spt, se->fe->kpage);
          }
-         printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
+         //printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
          return;
       }
    }
    if (se != NULL && se->writable == false && write == true) {
       // printf("writable issue\n");
-      printf("[page_fault | %d] finish with writable issue\n", thread_tid());
+      //printf("[page_fault | %d] finish with writable issue\n", thread_tid());
       syscall_exit(-1);
    }
 
    if (se != NULL && se->is_alloc == false) {
       struct swap_entry* swap_e;
-      printf("[page_fault | %d] lazy loading u : %p\n",  thread_tid(), upage);
+      //printf("[page_fault | %d] lazy loading u : %p\n",  thread_tid(), upage);
 
       uint8_t *kpage = spt_alloc(&thread_current()->spt, upage, PAL_USER);
 
       swap_e = swap_find(upage);
       if (swap_e != NULL) {
-         printf("[page_fault | %d] call swap_in\n", thread_tid());
+         //printf("[page_fault | %d] call swap_in\n", thread_tid());
          swap_in(&thread_current()->spt, kpage, upage);
       } else {
          if (se->file != NULL) {
@@ -254,23 +254,23 @@ page_fault (struct intr_frame *f)
          me = list_entry(e, struct mmap_entry, elem);
       }
       //printf("finish lazy loading u : %p, k : %p, prb : %d\n", upage, kpage, se->page_read_bytes);
-      printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
+      //printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
       return;
    }
    else if (is_kernel_vaddr(fault_addr)) {
       //printf("not user vaddr\n");
-      printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
+      //printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
       syscall_exit(-1);
    }
    if (!user) {
       //printf("kernel\n");
-      printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
+      //printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
       syscall_exit(-1);
    }
    if (not_present) {
       if (fault_addr >= f->esp || fault_addr == f->esp - 32 || fault_addr == f->esp - 4) {
          // stack growth
-         printf("[page_fault | %d] stack growth upage : %p, esp : %p, fault_addr : %p\n", thread_tid(), upage, f->esp, fault_addr);
+         //printf("[page_fault | %d] stack growth upage : %p, esp : %p, fault_addr : %p\n", thread_tid(), upage, f->esp, fault_addr);
          void* upage_tmp;
          upage_tmp = PHYS_BASE - PGSIZE;
          while(upage_tmp >= pg_round_down(fault_addr)) {
@@ -285,11 +285,11 @@ page_fault (struct intr_frame *f)
             }
             upage_tmp -= PGSIZE;
          }
-         printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
+         //printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
          return;
       } else {
          //printf("not present not stack\n");
-         printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
+         //printf("[page_fault | %d] finish u : %p\n", thread_tid(), upage);
          syscall_exit(-1);
       }
    }
